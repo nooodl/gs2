@@ -18,10 +18,10 @@ mnemonics = {
     "'": '\x4d',  # open 1-token block
     '*': '\x4e',  # open 1-token map
     '**': '\x4f', # open 2-token map
-    '?': '\x5e',  # open 1-token filter
-    '??': '\x5f', # open 2-token filter
-    '*:': '\x6e', # open rest-of-program map 
-    '?:': '\x6f', # open rest-of-program filter 
+    '?': '\x5c',  # open 1-token filter
+    '??': '\x5d', # open 2-token filter
+    '*:': '\x5e', # open rest-of-program map 
+    '?:': '\x5f', # open rest-of-program filter 
 
     'new-line': '\x0a',
     'empty-list': '\x0b',
@@ -102,7 +102,7 @@ mnemonics = {
 
 mnemonics = {w: v for k,v in mnemonics.items() for w in k.split()}
 
-for i, c in enumerate('abcd', 1):
+for i, c in enumerate('abcd'):
     mnemonics['save-%s' % c] = chr(0xF0 + i)
     mnemonics['put-%s' % c] = chr(0xF4 + i)
     mnemonics['get-%s' % c] = chr(0xF8 + i)

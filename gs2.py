@@ -46,8 +46,9 @@ def tokenize(prog):
         log(tokens[i:])
         if t == '\x08': # open block
             blocks.append(Block([]))
+            final.append('')
         elif t == '\x09': # close block
-            blocks[-2].code.append(blocks.pop())
+            blocks[-2].code.append(blocks.pop() + final.pop())
         elif t == '\x4d': # open 1-token block
             blocks[-1].code.append(Block([tokens[i + 1]]))
             i += 1
@@ -59,18 +60,18 @@ def tokenize(prog):
             blocks[-1].code.append(Block([tokens[i + 1], tokens[i + 2]]))
             blocks[-1].code.append('\x34')
             i += 2
-        elif t == '\x5e': # open 1-token filter
+        elif t == '\x5c': # open 1-token filter
             blocks[-1].code.append(Block([tokens[i + 1]]))
             blocks[-1].code.append('\x35')
             i += 1
-        elif t == '\x5f': # open 2-token filter
+        elif t == '\x5d': # open 2-token filter
             blocks[-1].code.append(Block([tokens[i + 1], tokens[i + 2]]))
             blocks[-1].code.append('\x35')
             i += 2
-        elif t == '\x6e': # open rest-of-program map 
+        elif t == '\x5e': # open rest-of-program map 
             blocks.append(Block([]))
             final.append('\x34')
-        elif t == '\x6f': # open rest-of-program filter 
+        elif t == '\x5f': # open rest-of-program filter 
             blocks.append(Block([]))
             final.append('\x35')
         else:
@@ -694,7 +695,7 @@ class GS2(object):
                 x = self.stack.pop()
                 self.stack.append(to_gs(', '.join(map(show, x)).join('[]')))
 
-            # 5e 5f are special
+            # 5c 5d 5e 5f are special
             elif t == '\x60': # logical and
                 y = self.stack.pop()
                 x = self.stack.pop()
