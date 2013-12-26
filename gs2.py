@@ -2,6 +2,7 @@
 # (c) nooodl 2014
 
 import inspect
+import itertools as it
 import math
 import random
 import re
@@ -162,6 +163,58 @@ def set_or(a, b):
 
 def set_xor(a, b):
     return set_diff(a, b) + set_diff(b, a)
+
+# prime number stuff
+prime_list = []
+sieved = 2
+composite = set([1])
+
+def sieve(limit):
+    global prime_list
+    global sieved
+    global composite
+    if limit <= sieved: return
+
+    prime_list = []
+    for i in range(2, limit):
+        if i in composite: continue
+        for j in range(i*2, limit, i):
+            composite.add(j)
+        prime_list.append(i)
+    sieved = limit
+
+sieve(1000)
+
+def is_prime(n):
+    global prime_list
+    sieve(n+1)
+    return n not in composite
+
+def nth_prime(n):
+    global prime_list
+    sieve(int(math.log(n) * n) + 100)
+    return prime_list[n-1]
+
+def n_primes(n):
+    global prime_list
+    sieve(int(math.log(n) * n) + 100)
+    return prime_list[:n]
+
+def primes_below(n):
+    global prime_list
+    sieve(n+1)
+    return list(it.takewhile(lambda x: x < n, prime_list))
+
+def next_prime(n):
+    n += 1
+    while not is_prime(n): n += 1
+    return n
+
+def totient(n):
+    count = 0
+    for i in xrange(1, n+1):
+        if gcd(n, i) == 1: count += 1
+    return count
 
 class GS2(object):
     def __init__(self, code, stdin=''):
