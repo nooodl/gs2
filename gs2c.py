@@ -38,7 +38,7 @@ mnemonics = {
     'dec left-uncons': '\x26',
     'inc right-uncons': '\x27',
     'sign min': '\x28',
-    'parity max': '\x29',
+    'thousand max': '\x29',
     'double lines': '\x2a',
     'half unlines': '\x2b',
     'square words': '\x2c',

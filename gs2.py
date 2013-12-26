@@ -377,14 +377,14 @@ class GS2(object):
                 else:
                     raise TypeError('sign / min')
 
-            elif t == '\x29': # parity / max
+            elif t == '\x29': # thousand / max
                 x = self.stack.pop()
                 if is_num(x):
-                    self.stack.append(x & 1)
+                    self.stack.append(x * 1000)
                 elif is_list(x):
                     self.stack.append(max(x))
                 else:
-                    raise TypeError('parity / max')
+                    raise TypeError('thousand / max')
 
             elif t == '\x2a': # double / lines
                 x = self.stack.pop()
