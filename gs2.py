@@ -271,15 +271,8 @@ class GS2(object):
                 self.stack.append([])
             elif t == '\x0c': # push {}
                 self.stack.append(Block([]))
-            elif t == '\x0d': # block to array
-                # Simulate evaluating code on copy of stack,
-                # then push extra elements onto real stack
-                block = self.stack.pop()
-                env = GS2(self.code)
-                env.stack = self.stack[:]
-                env.evaluate(block)
-                new = env.stack[len(self.stack):]
-                self.stack.append(new)
+            elif t == '\x0d': # push " "
+                self.stack.append([ord(' ')])
             elif t == '\x0e': # array of top n elements
                 size = self.stack.pop()
                 self.stack[-size:] = [self.stack[-size:]]
