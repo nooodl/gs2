@@ -16,7 +16,7 @@ from fractions import gcd
 
 Block = namedtuple('Block', 'code')
 
-DEBUG = True
+DEBUG = False
 
 def log(x):
     if not DEBUG: return
