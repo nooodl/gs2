@@ -16,12 +16,12 @@ mnemonics = {
     '{': '\x08',  # open block
     '}': '\x09',  # close block
     "'": '\x4d',  # open 1-token block
-    '*': '\x4e',  # open 1-token map
-    '**': '\x4f', # open 2-token map
-    '?': '\x5c',  # open 1-token filter
-    '??': '\x5d', # open 2-token filter
-    '*:': '\x5e', # open rest-of-program map 
-    '?:': '\x5f', # open rest-of-program filter 
+    'm': '\x4e',  # open 1-token map
+    'mm': '\x4f', # open 2-token map
+    'f': '\x5c',  # open 1-token filter
+    'ff': '\x5d', # open 2-token filter
+    'm:': '\x5e', # open rest-of-program map 
+    'f:': '\x5f', # open rest-of-program filter 
 
     'new-line': '\x0a',
     'empty-list': '\x0b',
