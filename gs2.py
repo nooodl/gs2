@@ -4,6 +4,7 @@
 import inspect
 import itertools as it
 import math
+import operator
 import random
 import re
 import string
@@ -438,7 +439,7 @@ class GS2(object):
                         return self.stack.pop()
                     self.stack.append(list(sorted(l, key=f)))
                 else:
-                    raise TypeError('irange / sort')
+                    raise TypeError('range1 / sort')
 
             elif t == '\x30': # add / catenate
                 y = self.stack.pop()
@@ -761,6 +762,8 @@ class GS2(object):
                     self.stack.append(x // y)
                     self.stack.append(x % y)
                 # TODO: list op?
+                elif is_list(x):
+                    self.stack.append(list(sorted(x)))
             elif t == '\x64': # sum / even
                 x = self.stack.pop()
                 if is_num(x):
@@ -807,7 +810,7 @@ class GS2(object):
             elif t == '\x6a': # is-prime
                 x = self.stack.pop()
                 if is_num(x):
-                    self.stack.append(int(is_prime(x)))
+                    self.stack.append(1 if is_prime(x) else 0)
             elif t == '\x6b': # nth-prime
                 x = self.stack.pop()
                 if is_num(x):
@@ -828,7 +831,22 @@ class GS2(object):
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(totient(x))
-
+            elif '\x70' <= t <= '\x75': # lt eq gt ge ne le
+                y = self.stack.pop()
+                x = self.stack.pop()
+                ops = {
+                    '\x70': operator.lt,
+                    '\x71': operator.eq,
+                    '\x72': operator.gt,
+                    '\x73': operator.ge,
+                    '\x74': operator.ne,
+                    '\x75': operator.le,
+                }
+                self.stack.append(1 if ops[t](x, y) else 0)
+            elif t == '\x76': # compare
+                y = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append(cmp(x, y))
 
             elif '\xf0' <= t <= '\xf3': # save
                 self.regs[ord(t) & 3] = self.stack[-1]

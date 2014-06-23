@@ -98,6 +98,13 @@ mnemonics = {
     'primes-below': '\x6d',
     'next-prime': '\x6e',
     'totient': '\x6f',
+    'lt': '\x70',
+    'eq': '\x71',
+    'gt': '\x72',
+    'ge': '\x73',
+    'ne': '\x74',
+    'le': '\x75',
+    'cmp': '\x76',
 }
 
 mnemonics = {w: v for k,v in mnemonics.items() for w in k.split()}
