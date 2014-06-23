@@ -896,13 +896,13 @@ class GS2(object):
                 x = self.stack.pop()
                 self.stack.append([[' ' for ix in xrange(x)]
                                        for iy in xrange(y)])
-            elif t == '\x81': # take
+            elif t == '\x81': # matrix-take
                 y = self.stack.pop()
                 x = self.stack.pop()
                 a = self.stack.pop()
                 def f(a, iy, ix):
-                    try: return a[iy][ix]
-                    except IndexError: return ' '
+                    row = a[iy % len(a)]
+                    return row[ix % len(row)]
                 self.stack.append([[f(a, iy, ix) for ix in xrange(x)]
                                        for iy in xrange(y)])
             elif t == '\x82': # flip

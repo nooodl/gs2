@@ -115,7 +115,7 @@ mnemonics = {
     'sub-power-of-2': '\x7e', 
     'sub-power-of-10': '\x7f', 
     'empty-matrix': '\x80', 
-    'take': '\x81', 
+    'matrix-take': '\x81', 
     'flip': '\x82', 
     'transpose': '\x83', 
     'rotate-cw': '\x84', 
