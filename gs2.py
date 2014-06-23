@@ -607,7 +607,7 @@ class GS2(object):
             elif t == '\x39': # biggest
                 y = self.stack.pop()
                 x = self.stack.pop()
-                self.stack.append(min(x, y))
+                self.stack.append(max(x, y))
 
             elif t == '\x3a': # clamp
                 z = self.stack.pop()
