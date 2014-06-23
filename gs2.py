@@ -852,6 +852,19 @@ class GS2(object):
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(cmp(x, y))
+            elif t == '\x77': # sorted
+                if is_list(x):
+                    self.stack.append(1 if x == list(sorted(x)) else 0)
+                elif is_block(x):
+                    l = self.stack.pop()
+                    def f(z):
+                        self.stack.append(z)
+                        self.evaluate(x)
+                        return self.stack.pop()
+                    sorted_l = list(sorted(l, key=f))
+                    self.stack.append(1 if l == sorted_l else 0)
+                else:
+                    raise TypeError('sorted')
 
             elif '\xf0' <= t <= '\xf3': # save
                 self.regs[ord(t) & 3] = self.stack[-1]
