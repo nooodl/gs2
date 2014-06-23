@@ -217,6 +217,10 @@ def totient(n):
         if gcd(n, i) == 1: count += 1
     return count
 
+def chunks(x, y):
+    # chunks(range(12), 3) ==> [[0, 1, 2], [3, 4, 5], ...]
+    return map(list, zip(*[iter(x)] * y))
+
 class GS2(object):
     def __init__(self, code, stdin=''):
         self.code = code
@@ -755,15 +759,16 @@ class GS2(object):
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(0 if x % y else 1)
-            elif t == '\x63': # divmod
+            elif t == '\x63': # divmod / chunks
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if is_num(y):
                     self.stack.append(x // y)
                     self.stack.append(x % y)
-                # TODO: list op?
-                elif is_list(x):
-                    self.stack.append(list(sorted(x)))
+                elif is_list(y):
+                    self.stack.append(chunks(x, y))
+                else:
+                    raise TypeError('divmod / chunks')
             elif t == '\x64': # sum / even
                 x = self.stack.pop()
                 if is_num(x):

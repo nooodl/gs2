@@ -86,6 +86,7 @@ mnemonics = {
     'logical-or': '\x61',
     'divides': '\x62',
     'divmod': '\x63',
+    'chunks': '\x63',
     'sum even': '\x64',
     'product odd': '\x65',
     'fizzbuzz': '\x66',
