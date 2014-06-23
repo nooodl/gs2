@@ -865,6 +865,58 @@ class GS2(object):
                     self.stack.append(1 if l == sorted_l else 0)
                 else:
                     raise TypeError('sorted')
+            elif t == '\x78': # shift-left
+                y = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append(x << y)
+            elif t == '\x79': # shift-right
+                y = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append(x >> y)
+            elif t == '\x7a': # digit-left
+                y = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append(x * (10 ** y))
+            elif t == '\x7b': # digit-right
+                y = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append(x // (10 ** y))
+            elif t == '\x7c': # power-of-2
+                self.stack.append(2 ** self.stack.pop())
+            elif t == '\x7d': # power-of-10
+                self.stack.append(10 ** self.stack.pop())
+            elif t == '\x7e': # sub-power-of-2
+                self.stack.append(2 ** self.stack.pop() - 1)
+            elif t == '\x7f': # sub-power-of-10
+                self.stack.append(10 ** self.stack.pop() - 1)
+
+            # ascii art stuff
+            elif t == '\x80': # empty-matrix
+                y = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append([[' ' for ix in xrange(x)]
+                                       for iy in xrange(y)])
+            elif t == '\x81': # take
+                y = self.stack.pop()
+                x = self.stack.pop()
+                a = self.stack.pop()
+                def f(a, iy, ix):
+                    try: return a[iy][ix]
+                    except IndexError: return ' '
+                self.stack.append([[f(a, iy, ix) for ix in xrange(x)]
+                                       for iy in xrange(y)])
+            elif t == '\x82': # flip
+                a = self.stack.pop()
+                self.stack.append([row[::-1] for row in a])
+            elif t == '\x83': # transpose
+                a = self.stack.pop()
+                self.stack.append(map(list, zip(*a)))
+            elif t == '\x84': # rotate-cw
+                a = self.stack.pop()
+                self.stack.append([list(x)[::-1] for x in zip(*a)])
+            elif t == '\x85': # rotate-ccw
+                a = self.stack.pop()
+                self.stack.append(map(list, zip(*a[::-1])))
 
             elif '\xf0' <= t <= '\xf3': # save
                 self.regs[ord(t) & 3] = self.stack[-1]

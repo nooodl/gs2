@@ -107,6 +107,20 @@ mnemonics = {
     'le': '\x75',
     'cmp': '\x76',
     'sorted': '\x77',
+    'shift-left': '\x78', 
+    'shift-right': '\x79', 
+    'digit-left': '\x7a', 
+    'digit-right': '\x7b', 
+    'power-of-2': '\x7c', 
+    'power-of-10': '\x7d', 
+    'sub-power-of-2': '\x7e', 
+    'sub-power-of-10': '\x7f', 
+    'empty-matrix': '\x80', 
+    'take': '\x81', 
+    'flip': '\x82', 
+    'transpose': '\x83', 
+    'rotate-cw': '\x84', 
+    'rotate-ccw': '\x85', 
 }
 
 mnemonics = {w: v for k,v in mnemonics.items() for w in k.split()}
