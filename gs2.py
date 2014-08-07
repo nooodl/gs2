@@ -1,10 +1,12 @@
 # gs2 interpreter (version 0.1)
 # (c) nooodl 2014
 
+import copy
 import inspect
 import itertools as it
 import math
 import operator
+import os
 import random
 import re
 import string
@@ -48,32 +50,24 @@ def tokenize(prog):
         log(tokens[i:])
         if t == '\x08': # open block
             blocks.append(Block([]))
-            final.append('')
+            final.append('\x00')
         elif t == '\x09': # close block
-            blocks[-2].code.append(blocks.pop() + final.pop())
-        elif t == '\x4d': # open 1-token block
-            blocks[-1].code.append(Block([tokens[i + 1]]))
-            i += 1
-        elif t == '\x4e': # open 1-token map
-            blocks[-1].code.append(Block([tokens[i + 1]]))
-            blocks[-1].code.append('\x34')
-            i += 1
-        elif t == '\x4f': # open 2-token map
-            blocks[-1].code.append(Block([tokens[i + 1], tokens[i + 2]]))
-            blocks[-1].code.append('\x34')
-            i += 2
-        elif t == '\x5c': # open 1-token filter
-            blocks[-1].code.append(Block([tokens[i + 1]]))
-            blocks[-1].code.append('\x35')
-            i += 1
-        elif t == '\x5d': # open 2-token filter
-            blocks[-1].code.append(Block([tokens[i + 1], tokens[i + 2]]))
-            blocks[-1].code.append('\x35')
-            i += 2
-        elif t == '\x5e': # open rest-of-program map 
+            blocks[-2].code.append(blocks.pop())
+            blocks[-1].code.append(final.pop())
+        elif '\xe0' <= t <= '\xfd': # pop {1..8} tokens into block
+            # 0b111XXYYY -- Y is number of tokens, X is end token:
+            #   0 = nop (0x00)  2 = filter (0x35)
+            #   1 = map (0x34)  3 = fold (0x32)
+            # but 0xfe and 0xff are special (see below.)
+            num = ord(t) & 7 + 1
+            ts = blocks[-1].code[-num:]
+            del blocks[-1].code[-num:]
+            blocks[-1].code.append(Block(ts))
+            blocks[-1].code.append('\x00\x34\x35\x32'[(ord(t) >> 3) & 3])
+        elif t == '\xfe': # open rest-of-program map 
             blocks.append(Block([]))
             final.append('\x34')
-        elif t == '\x5f': # open rest-of-program filter 
+        elif t == '\xff': # open rest-of-program filter 
             blocks.append(Block([]))
             final.append('\x35')
         else:
@@ -221,16 +215,29 @@ def chunks(x, y):
     # chunks(range(12), 3) ==> [[0, 1, 2], [3, 4, 5], ...]
     return map(list, zip(*[iter(x)] * y))
 
+class Stack(list):
+    def __init__(self, *args):
+        list.__init__(self, *args)
+        self.junk = []
+    def pop(self, i=-1):
+        x = list.pop(self, i)
+        self.junk.append(x)
+        return x
+
 class GS2(object):
     def __init__(self, code, stdin=''):
         self.code = code
         self.stdin = to_gs(stdin)
-        self.stack = [self.stdin]
+        self.stack = Stack([self.stdin])
         self.regs = {
             0: stdin, # A
             1: len(stdin), # B
             2: to_gs(code), # C
             3: random.randint(0, 2), # D
+            4: stdin.split('\n'), # E
+            5: stdin.split(), # F
+            6: os.getpid(), # G
+            7: 0, # H
         }
 
     def run(self):
@@ -246,7 +253,10 @@ class GS2(object):
             if not DEBUG: print self.code
 
     def evaluate(self, block):
+        log(block)
         for t in block.code:
+            log(self.stack.junk[-16:])
+            log(self.stack)
             if is_block(t):
                 self.stack.append(t)
             elif t[0] == '\x00': # nop
@@ -440,7 +450,7 @@ class GS2(object):
                     def f(z):
                         self.stack.append(z)
                         self.evaluate(x)
-                        return self.stack.pop()
+                        return self.stack.pop(junk=False)
                     self.stack.append(list(sorted(l, key=f)))
                 else:
                     raise TypeError('range1 / sort')
@@ -594,7 +604,7 @@ class GS2(object):
                     for i in x:
                         self.stack.append(i)
                         self.evaluate(y)
-                        self.res.extend(self.stack.pop())
+                        self.res.extend(self.stack.pop(junk=False))
                     self.stack.append(res)
                 else:
                     raise TypeError('xor / concatmap')
@@ -699,11 +709,21 @@ class GS2(object):
                 n = self.stack.pop()
                 self.stack.append(self.stack.pop(-n))
             elif t == '\x4b': # get stack
-                self.stack.append(self.stack)
+                self.stack.append(copy.deepcopy(self.stack))
             elif t == '\x4c': # leave top only
                 self.stack = [self.stack[-1]]
+            elif t == '\x4d': # itemize
+                self.stack.append([self.stack.pop()])
+            elif t == '\x4e': # range (n-1..0)
+                x = self.stack.pop()
+                self.stack.append(range(x)[::-1])
+            elif t == '\x4f': # custom-range
+                y = self.stack.pop()
+                x = self.stack.pop()
+                if x > y: x, y = y, x
+                self.stack.append(range(x, y))
 
-            # 4d 4e 4f are special
+            # 4e 4f are TODO
             elif t in '\x50\x51': # sprintf, sprintf list
                 y = self.stack.pop()
                 x = self.stack.pop()
@@ -745,8 +765,18 @@ class GS2(object):
             elif t == '\x5b': # show 'python style'
                 x = self.stack.pop()
                 self.stack.append(to_gs(', '.join(map(show, x)).join('[]')))
-
-            # 5c 5d 5e 5f are special
+            elif t in '\x5c\x5d\x5e': # ljust, center, rjust
+                fill_char = ' ' 
+                if is_num(self.stack[-2]):
+                    fill_char = chr(self.stack.pop())
+                width = self.stack.pop()
+                s = self.stack.pop()
+                if t == '\x5c': g = show(s).ljust(width)
+                if t == '\x5d': g = show(s).center(width)
+                if t == '\x5e': g = show(s).rjust(width)
+                self.stack.append(to_gs(g))
+            elif t == '\x5f': # inspect
+                self.stack.append(to_gs(repr(self.stack.pop())))
             elif t == '\x60': # logical and
                 y = self.stack.pop()
                 x = self.stack.pop()
@@ -895,7 +925,7 @@ class GS2(object):
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append([[' ' for ix in xrange(x)]
-                                       for iy in xrange(y)])
+                                        for iy in xrange(y)])
             elif t == '\x81': # matrix-take
                 y = self.stack.pop()
                 x = self.stack.pop()
@@ -904,7 +934,7 @@ class GS2(object):
                     row = a[iy % len(a)]
                     return row[ix % len(row)]
                 self.stack.append([[f(a, iy, ix) for ix in xrange(x)]
-                                       for iy in xrange(y)])
+                                                 for iy in xrange(y)])
             elif t == '\x82': # flip
                 a = self.stack.pop()
                 self.stack.append([row[::-1] for row in a])
@@ -917,18 +947,40 @@ class GS2(object):
             elif t == '\x85': # rotate-ccw
                 a = self.stack.pop()
                 self.stack.append(map(list, zip(*a[::-1])))
+            elif t == '\x86': # show-matrix
+                a = self.stack.pop()
+                if is_num(a):
+                    # TODO formatting options?
+                    a = self.stack.pop()
+                disp_row = lambda r: ''.join(map(show, r)).rstrip()
+                self.stack.append(to_gs('\n'.join(map(disp_row, a))))
+            elif t == '\x87': # from-rows
+                rows = self.stack.pop()
+                # if a number is on top use it as alignment opt
+                method = 'ljust'
+                if is_num(rows):
+                    method = ['center', 'rjust'][rows]
+                    rows = self.stack.pop()
+                width = max(map(len, rows))
+                a = [to_gs(getattr(r, method)(width)) for r in rows]
+                self.stack.append(a)
 
-            elif '\xf0' <= t <= '\xf3': # save
-                self.regs[ord(t) & 3] = self.stack[-1]
-            elif '\xf4' <= t <= '\xf7': # put
-                self.regs[ord(t) & 3] = self.stack.pop()
-            elif '\xf8' <= t <= '\xfb': # get
-                self.stack.append(self.regs[ord(t) & 3])
-            elif '\xfc' <= t <= '\xff': # exchange
-                temp = self.regs[ord(t) & 3]
-                self.regs[ord(t) & 3] = self.stack.pop()
+            elif '\xa0' <= t <= '\xaf': # junk
+                self.stack.append(self.stack.junk[-1 - (ord(t) & 15)])
+            elif '\xb0' <= t <= '\xb7': # save
+                self.regs[ord(t) & 7] = self.stack[-1]
+            elif '\xb8' <= t <= '\xbf': # put
+                self.regs[ord(t) & 7] = self.stack.pop()
+            elif '\xc0' <= t <= '\xc7': # get
+                self.stack.append(self.regs[ord(t) & 7])
+            elif '\xc8' <= t <= '\xcf': # exchange
+                temp = self.regs[ord(t) & 7]
+                self.regs[ord(t) & 7] = self.stack.pop()
                 self.stack.append(temp)
-
+            elif '\xd0' <= t <= '\xd7': # tuck
+                self.stack.insert(-1, self.regs[ord(t) & 7])
+            elif '\xd8' <= t <= '\xdf': # show
+                self.stack.append(show(self.regs[ord(t) & 7]))
             else:
                 raise ValueError('invalid token %r' % t) 
 

@@ -15,13 +15,8 @@ mnemonics = {
     'nop': '\x00',
     '{': '\x08',  # open block
     '}': '\x09',  # close block
-    "'": '\x4d',  # open 1-token block
-    'm': '\x4e',  # open 1-token map
-    'mm': '\x4f', # open 2-token map
-    'f': '\x5c',  # open 1-token filter
-    'ff': '\x5d', # open 2-token filter
-    'm:': '\x5e', # open rest-of-program map 
-    'f:': '\x5f', # open rest-of-program filter 
+    'm:': '\xfe', # open rest-of-program map 
+    'f:': '\xff', # open rest-of-program filter 
 
     'new-line': '\x0a',
     'empty-list': '\x0b',
@@ -73,6 +68,9 @@ mnemonics = {
     'roll': '\x4a',
     'get-stack': '\x4b',
     'leave-top': '\x4c',
+    'itemize': '\x4d',
+    'rrange': '\x4e',
+    'crange': '\x4f',
     'printf': '\x50',
     'lprintf': '\x51',
     'show': '\x52',
@@ -82,6 +80,13 @@ mnemonics = {
     'read-num': '\x56',
     'read-nums': '\x57',
     'show-line': '\x58',
+    'show-space': '\x59',
+    'show-comma': '\x5a',
+    'show-python': '\x5b',
+    'ljust': '\x5c',
+    'center': '\x5d',
+    'rjust': '\x5e',
+    'inspect': '\x5f',
     'logical-and': '\x60',
     'logical-or': '\x61',
     'divides': '\x62',
@@ -120,15 +125,27 @@ mnemonics = {
     'transpose': '\x83', 
     'rotate-cw': '\x84', 
     'rotate-ccw': '\x85', 
+    'show-matrix': '\x86', 
+    'from-rows': '\x87', 
 }
 
 mnemonics = {w: v for k,v in mnemonics.items() for w in k.split()}
 
-for i, c in enumerate('abcd'):
-    mnemonics['save-%s' % c] = chr(0xF0 + i)
-    mnemonics['put-%s' % c] = chr(0xF4 + i)
-    mnemonics['get-%s' % c] = chr(0xF8 + i)
-    mnemonics['exchange-%s' % c] = chr(0xFC + i)
+for i in xrange(16):
+    mnemonics['@%d' % i] = chr(0xA0 | i)
+for i, c in enumerate('abcdefgh'):
+    mnemonics['save-%s' % c]     = chr(0xB0 | i)
+    mnemonics['put-%s' % c]      = chr(0xB8 | i)
+    mnemonics['get-%s' % c]      = chr(0xC0 | i)
+    mnemonics['exchange-%s' % c] = chr(0xC8 | i)
+    mnemonics['tuck-%s' % c]     = chr(0xD0 | i)
+    mnemonics['show-%s' % c]     = chr(0xD8 | i)
+for i in xrange(8):
+    mnemonics['b%d' % (i+1)] = chr(0xE0 | i)
+    mnemonics['m%d' % (i+1)] = chr(0xE8 | i)
+    mnemonics['f%d' % (i+1)] = chr(0xF0 | i)
+    mnemonics['r%d' % (i+1)] = chr(0xF8 | i)
+del mnemonics['r7'], mnemonics['r8']
 
 def compile_num(i):
     if 0 <= i <= 10:
@@ -161,7 +178,8 @@ output_code = []
 for i in tokens:
     sys.stderr.write('[%s]\n' % i)
     try:
-        output_code.append(compile_num(int(i)))
+        v = compile_num(int(i))
+        output_code.append(v)
         continue
     except ValueError: pass
 
@@ -186,8 +204,9 @@ for i in tokens:
     elif i.lower() in mnemonics:
         output_code.append(mnemonics[i.lower()])
     else:
-        sys.stderr.write('uncaught\n')
-        pass # TODO
+        raise Exception('unknown symbol: ' + i)
 
 # shortcut: strip leading \x04
+sys.stderr.write('\n'.join(' '.join('{:02x}'.format(ord(c)) for c in x) for x in
+    output_code) + '\n')
 sys.stdout.write(''.join(output_code).lstrip('\x04'))
