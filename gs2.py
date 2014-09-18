@@ -291,7 +291,7 @@ class GS2(object):
     def run(self):
         try:
             self.evaluate(tokenize(self.code))
-            print show(self.stack)
+            print ''.join(map(show, self.stack))
         except Exception:
             # If the code fails, print something meaningful to stderr,
             # but quine on stdout: this allows GS2 to good at simple
