@@ -876,7 +876,7 @@ class GS2(object):
                     self.stack.append(x // y)
                     self.stack.append(x % y)
                 elif is_list(y):
-                    gb = [list(g) for k, g in it.groupby('AAAABBBCCD')]
+                    gb = [list(g) for k, g in it.groupby(y)]
                     self.stack.append(list(gb))
                 else:
                     raise TypeError('divmod / group')
