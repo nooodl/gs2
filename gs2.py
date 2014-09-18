@@ -18,91 +18,14 @@ from collections import namedtuple
 from fractions import gcd
 
 Block = namedtuple('Block', 'code')
+STRING_ENDS = '\x05\x06' + ''.join(map(chr, range(0x9b, 0xa0)))
 
-DEBUG = False
+DEBUG = True
 
 def log(x):
     if not DEBUG: return
     line, name = inspect.stack()[1][2:4]
     sys.stderr.write('\x1b[36m%s:%d\x1b[34m: %r\x1b[0m\n' % (name, line, x))
-
-def tokenize(prog):
-    # string hack
-    if re.match('^[^\x04]*[\x05\x06]', prog):
-        prog = '\x04' + prog
-
-    token_re = [
-        '\x01.',                      # unsigned byte
-        '\x02..',                     # signed short
-        '\x03....',                   # signed long
-        '\x04[^\x05\x06]*[\x05\x06]', # string (array)
-        '\x07.',                      # 1 char string
-        '.',                          # regular token
-    ]
-
-    tokens = re.findall('|'.join(token_re), prog, re.DOTALL)
-
-    final = []
-    blocks = [Block([])]
-    i = 0 
-    while i < len(tokens):
-        t = tokens[i]
-        log(tokens[i:])
-        if t == '\x08': # open block
-            blocks.append(Block([]))
-            final.append('\x00')
-        elif t == '\x09': # close block
-            blocks[-2].code.append(blocks.pop())
-            blocks[-1].code.append(final.pop())
-        elif '\xe0' <= t <= '\xfd': # pop {1..8} tokens into block
-            # 0b111XXYYY -- Y is number of tokens, X is end token:
-            #   0 = nop (0x00)  2 = filter (0x35)
-            #   1 = map (0x34)  3 = fold (0x32)
-            # but 0xfe and 0xff are special (see below.)
-            num = ord(t) & 7 + 1
-            ts = blocks[-1].code[-num:]
-            del blocks[-1].code[-num:]
-            blocks[-1].code.append(Block(ts))
-            blocks[-1].code.append('\x00\x34\x35\x32'[(ord(t) >> 3) & 3])
-        elif t == '\xfe': # open rest-of-program map 
-            blocks.append(Block([]))
-            final.append('\x34')
-        elif t == '\xff': # open rest-of-program filter 
-            blocks.append(Block([]))
-            final.append('\x35')
-        else:
-            blocks[-1].code.append(t)
-        i += 1
-
-    log(blocks)
-    log(final)
-    while final:
-        blocks[-2].code.append(blocks.pop())
-        blocks[-1].code.append(final.pop())
-    log(blocks)
-
-    assert len(blocks) == 1
-    blocks[0].code.extend(final)
-
-    return blocks[0]
-
-is_num   = lambda v: isinstance(v, (int, long))
-is_list  = lambda v: isinstance(v, list)
-is_block = lambda v: isinstance(v, Block)
-
-def to_gs(ps): return map(ord, ps)
-
-def to_ps(gs):
-    if is_list(gs): return ''.join(map(chr, gs))
-    else: return gs
-
-def show(value, nest=False):
-    if is_list(value):
-        return ''.join(show(x, nest=True) for x in value)
-    elif nest and is_num(value):
-        return chr(value)
-    else:
-        return str(value)
 
 def lcm(a, b):
     if (a, b) == (0, 0): return 0
@@ -113,7 +36,7 @@ def split(a, b, clean=False):
     lb = len(b)
 
     i = 0
-    while i <= len(a) - lb + 1:
+    while i <= len(a) - lb:
         if a[i:i + lb] == b:
             res.append([])
             i += lb
@@ -128,15 +51,7 @@ def join(a, b):
     for i, x in enumerate(a):
         if i > 0:
             res.extend(b)
-        res.extend(a)
-    return res
-
-def group(a, n):
-    i = 0
-    res = []
-    while i < len(a):
-        res.append(a[i:i+n])
-        i += n
+        res.extend(x)
     return res
 
 def set_diff(a, b):
@@ -159,7 +74,7 @@ def set_or(a, b):
 def set_xor(a, b):
     return set_diff(a, b) + set_diff(b, a)
 
-# prime number stuff
+# prime number functions
 prime_list = []
 sieved = 2
 composite = set([1])
@@ -210,18 +125,154 @@ def totient(n):
     for i in xrange(1, n+1):
         if gcd(n, i) == 1: count += 1
     return count
+    
+def factor(n, exps=False):
+    if is_num(n):
+        p = 2
+        res = []
+        while n > 1:
+            while n % p == 0:
+                res.append(p)
+                n //= p
+            p = next_prime(p)
+        if exps:
+            res = it.groupby(res, lambda k, g: [k, len(g)])
+        return res
+    elif is_list(n):
+        if is_num(n[0]):
+            n = group(n, 2)
+        p = 1
+        for b, e in n: p *= b ** e
+        return p
+    else:
+        raise TypeError('factor')
 
 def chunks(x, y):
     # chunks(range(12), 3) ==> [[0, 1, 2], [3, 4, 5], ...]
-    return map(list, zip(*[iter(x)] * y))
+    while x:
+        yield x[:y]
+        x = x[y:]
+
+def tokenize(prog):
+    # string hack
+    cs = STRING_ENDS
+    if re.match('^[^\x04]*[%s]' % cs, prog):
+        prog = '\x04' + prog
+    
+    mode = None
+    if prog[0] in '\x30\x31\x32': # set mode
+        mode = prog[0]
+        prog = prog[1:]
+    
+    token_re = [
+        '\x01.',                     # unsigned byte
+        '\x02..',                    # signed short
+        '\x03....',                  # signed long
+        '\x04[^%s]*[%s]' % (cs, cs), # string (array)
+        '\x07.',                     # 1 char string
+        '.',                         # regular token
+    ]
+
+    tokens = re.findall('|'.join(token_re), prog, re.DOTALL)
+
+    final = []
+    blocks = [Block([])]
+    i = 0 
+    while i < len(tokens):
+        t = tokens[i]
+        log(tokens[i:])
+        if t == '\x08': # open block
+            blocks.append(Block([]))
+            final.append('\x00')
+        elif t == '\x09': # close block
+            blocks[-2].code.append(blocks.pop())
+            blocks[-1].code.append(final.pop())
+        elif '\xe0' <= t <= '\xff' and ord(t) & 7 < 6:
+            # quick block
+            # 0b111XXYYY -- Y+1 is number of tokens, X is end token:
+            #   0 = nop (0x00)  2 = filter (0x35)
+            #   1 = map (0x34)  3 = both (0x38)
+            # but 0xfe and 0xff are special (see below.)
+            num = (ord(t) & 7) + 1
+            ts = blocks[-1].code[-num:]
+            del blocks[-1].code[-num:]
+            blocks[-1].code.append(Block(ts))
+            blocks[-1].code.append('\x00\x34\x35\x38'[(ord(t) >> 3) & 3])
+        elif t in '\xee\xef':
+            # zipwith (1/2 tokens)
+            num = (ord(t) & 1) + 1
+            ts = blocks[-1].code[-num:]
+            del blocks[-1].code[-num:]
+            blocks[-1].code.append(Block(ts))
+            blocks[-1].code.append('\xb1')
+        elif t in '\xf6\xf7':
+            # like m1/f1 with dump prepended to block
+            # useful with transpose, pairwise, cartesian-product, etc.
+            f = {'\xfc': '\x34', '\xfd': '\x35'}[t]
+            x = blocks[-1].code.pop()
+            blocks[-1].code.extend([Block(['\x90', x]), f])
+        elif t == '\xfe': # open rest-of-program map 
+            blocks.append(Block([]))
+            final.append('\x34')
+        elif t == '\xff': # open rest-of-program filter 
+            blocks.append(Block([]))
+            final.append('\x35')
+        else:
+            blocks[-1].code.append(t)
+        i += 1
+
+    while final:
+        blocks[-2].code.append(blocks.pop())
+        blocks[-1].code.append(final.pop())
+    
+    assert len(blocks) == 1
+    main = blocks[0]
+    
+    if mode == '\x30': # map over lines
+        main = Block(['\x2a', main, '\x34', '\x54'])
+    elif mode == '\x31': # map over words
+        main = Block(['\x2c', main, '\x34', '\x55'])
+    elif mode == '\x32': # map over lines, skipping first
+        main = Block(['\x2a', '\x22', main, '\x34', '\x54'])
+    
+    main.code.extend(final)
+    return main
+
+is_num   = lambda v: isinstance(v, (int, long))
+is_list  = lambda v: isinstance(v, list)
+is_block = lambda v: isinstance(v, Block)
+
+def to_gs(ps): return map(ord, ps)
+
+def to_ps(gs):
+    if is_list(gs): return ''.join(map(chr, gs))
+    else: return gs
+    
+def regex_count(pattern):
+    c = 0
+    if pattern[0] == ']':
+        c = 1
+        pattern = pattern[1:]
+    elif pattern[0] == '}':
+        c = ord(pattern[1])
+        pattern = pattern[2:]
+    return (c, pattern)
+
+def show(value, nest=False):
+    if is_list(value):
+        return ''.join(show(x, nest=True) for x in value)
+    elif nest and is_num(value):
+        return chr(value)
+    else:
+        return str(value)
 
 class Stack(list):
     def __init__(self, *args):
         list.__init__(self, *args)
         self.junk = []
-    def pop(self, i=-1):
+    def pop(self, i=-1, junk=True):
         x = list.pop(self, i)
-        self.junk.append(x)
+        if junk: self.junk.append(x)
         return x
 
 class GS2(object):
@@ -230,15 +281,12 @@ class GS2(object):
         self.stdin = to_gs(stdin)
         self.stack = Stack([self.stdin])
         self.regs = {
-            0: stdin, # A
-            1: len(stdin), # B
-            2: to_gs(code), # C
+            0: stdin,                # A
+            1: len(stdin),           # B
+            2: to_gs(code),          # C
             3: random.randint(0, 2), # D
-            4: stdin.split('\n'), # E
-            5: stdin.split(), # F
-            6: os.getpid(), # G
-            7: 0, # H
         }
+        self.counter = 1
 
     def run(self):
         try:
@@ -250,13 +298,11 @@ class GS2(object):
             # "print this string" programs -- just upload a plaintext
             # file, it's unlikely to be valid GS2 code.
             traceback.print_exc()
-            if not DEBUG: print self.code
+            if not DEBUG: sys.stdout.write(self.code)
 
     def evaluate(self, block):
         log(block)
         for t in block.code:
-            log(self.stack.junk[-16:])
-            log(self.stack)
             if is_block(t):
                 self.stack.append(t)
             elif t[0] == '\x00': # nop
@@ -270,12 +316,45 @@ class GS2(object):
 
             elif t[0] == '\x04': # string
                 assert len(t) >= 2
-                assert t[-1] in '\x05\x06'
+                assert t[-1] in STRING_ENDS
                 strings = t[1:-1].split('\x07')
                 strings = map(to_gs, strings)
-                if t[-1] == '\x06': self.stack.append(strings)
-                else:               self.stack.extend(strings)
-
+                if t[-1] == '\x05': # regular
+                    self.stack += strings
+                elif t[-1] == '\x06': # array
+                    self.stack.append(strings)
+                elif t[-1] == '\x9b': # printf
+                    f = to_ps(strings.pop())
+                    n = f.count('%') - f.count('%%') * 2
+                    x = tuple(map(to_ps, self.stack[-n:]))
+                    del self.stack[-n:]
+                    self.stack.append(to_gs(f % x))
+                elif t[-1] == '\x9c': # regex match
+                    pattern = strings.pop()
+                    c, pattern = regex_count(pattern)
+                    s = to_ps(self.stack.pop())
+                    f = re.match if c else re.search
+                    self.stack.append(1 if f(pattern, s) else 0)
+                elif t[-1] == '\x9d': # regex sub
+                    repl = strings.pop()
+                    pattern = strings.pop()
+                    c, pattern = regex_count(pattern)
+                    s = to_ps(self.stack.pop())
+                    m = re.sub(pattern, repl, s, count=c)
+                    self.stack.append(to_gs(m))
+                elif t[-1] == '\x9e': # regex find
+                    pattern = strings.pop()
+                    c, pattern = regex_count(pattern)
+                    s = to_ps(self.stack.pop())
+                    ms = re.findall(pattern, s)
+                    if c > 0: ms = ms[0] if ms else []
+                    self.stack.append(map(to_gs, ms))
+                elif t[-1] == '\x9f': # regex split
+                    pattern = strings.pop()
+                    c, pattern = regex_count(pattern)
+                    s = to_ps(self.stack.pop())
+                    m = re.split(pattern, s, maxsplit=c)
+                
             elif t[0] == '\x07': # single char string
                 self.stack.append([ord(t[1])])
 
@@ -302,12 +381,14 @@ class GS2(object):
             elif t == '\x1e': self.stack.append(64)
             elif t == '\x1f': self.stack.append(256)
 
-            elif t == '\x20': # negate / reverse
+            elif t == '\x20': # negate / reverse / eval
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(-x)
                 elif is_list(x):
                     self.stack.append(x[::-1])
+                elif is_block(x):
+                    self.evaluate(x)
                 else:
                     raise TypeError('negate / reverse')
 
@@ -399,7 +480,7 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(x * 2)
                 elif is_list(x):
-                    self.stack.append(split(x, ord('\n')))
+                    self.stack.append(split(x, to_gs('\n')))
                 else:
                     raise TypeError('double / line')
 
@@ -408,7 +489,8 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(x // 2)
                 elif is_list(x):
-                    self.stack.append(join(x, ord('\n')))
+                    x = [to_gs(show(i)) for i in x]
+                    self.stack.append(join(x, to_gs('\n')))
                 else:
                     raise TypeError('half / unlines')
 
@@ -417,7 +499,7 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(x * x)
                 elif is_list(x):
-                    self.stack.append(split(x, ord(' ')))
+                    self.stack.append(split(x, to_gs(' ')))
                 else:
                     raise TypeError('square / words')
 
@@ -426,7 +508,8 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(int(math.sqrt(x)))
                 elif is_list(x):
-                    self.stack.append(join(x, ord('\n')))
+                    x = [to_gs(show(i)) for i in x]
+                    self.stack.append(join(x, to_gs(' ')))
                 else:
                     raise TypeError('sqrt / unwords')
 
@@ -510,7 +593,7 @@ class GS2(object):
                 else:
                     raise TypeError('multiply / join / times / fold')
 
-            elif t == '\x33': # divide / group / split / each
+            elif t == '\x33': # divide / chunks / split / each
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -520,7 +603,7 @@ class GS2(object):
                 if is_num(x) and is_num(y):
                     self.stack.append(x // y)
                 elif is_list(x) and is_num(y):
-                    self.stack.append(group(x, y))
+                    self.stack.append(list(chunks(x, y)))
                 elif is_list(x) and is_list(y):
                     self.stack.append(split(x, y))
                 elif is_list(x) and is_block(y):
@@ -528,7 +611,7 @@ class GS2(object):
                         self.stack.append(i)
                         self.evaluate(y)
                 else:
-                    raise TypeError('divide / group / split / each')
+                    raise TypeError('divide / chunks / split / each')
 
             elif t == '\x34': # modulo / step / split' / map
                 y = self.stack.pop()
@@ -565,9 +648,9 @@ class GS2(object):
                     self.stack.append(set_and(x, y))
                 elif is_list(x) and is_num(y):
                     self.stack.append(x[y])
-                elif is_num(x) and is_block(y) and x:
-                    self.evaluate(y)
-                if is_list(x) and is_block(y):
+                elif is_num(x) and is_block(y):
+                    if x: self.evaluate(y)
+                elif is_list(x) and is_block(y):
                     self.eval_filter(y, x)
                 else:
                     raise TypeError('and / get / when / filter')
@@ -583,8 +666,8 @@ class GS2(object):
                     self.stack.append(x | y)
                 elif is_list(x) and is_list(y):
                     self.stack.append(set_or(x, y))
-                elif is_num(x) and is_block(y) and not x:
-                    self.evaluate(y)
+                elif is_num(x) and is_block(y):
+                    if not x: self.evaluate(y)
                 else:
                     raise TypeError('bor / unless')
 
@@ -600,19 +683,25 @@ class GS2(object):
                 elif is_list(x) and is_list(y):
                     self.stack.append(set_xor(x, y))
                 elif is_list(x) and is_block(y):
-                    self.res = []
+                    res = []
                     for i in x:
                         self.stack.append(i)
                         self.evaluate(y)
-                        self.res.extend(self.stack.pop(junk=False))
+                        res.extend(self.stack.pop(junk=False))
                     self.stack.append(res)
                 else:
                     raise TypeError('xor / concatmap')
 
-            elif t == '\x38': # smallest
+            elif t == '\x38': # smallest / both
                 y = self.stack.pop()
-                x = self.stack.pop()
-                self.stack.append(min(x, y))
+                if is_block(y):
+                    x = self.stack.pop()
+                    self.evaluate(y)
+                    self.stack.append(x)
+                    self.evaluate(y)
+                else:
+                    x = self.stack.pop()
+                    self.stack.append(min(x, y))
 
             elif t == '\x39': # biggest
                 y = self.stack.pop()
@@ -671,12 +760,12 @@ class GS2(object):
                 y = self.stack.pop()
                 x = self.stack.pop()
                 
-                if is_num(x) and is_list(y):
+                if is_list(y):
                     x, y = y, x
 
                 if is_num(x) and is_num(y):
                     self.stack.append(int(math.log(x, y)))
-                elif is_list(x) and is_num(y):
+                elif is_list(x):
                     self.stack.append(1 if y in x else 0)
                 else:
                     raise TypeError('log / member')
@@ -711,7 +800,7 @@ class GS2(object):
             elif t == '\x4b': # get stack
                 self.stack.append(copy.deepcopy(self.stack))
             elif t == '\x4c': # leave top only
-                self.stack = [self.stack[-1]]
+                del self.stack[:-1]
             elif t == '\x4d': # itemize
                 self.stack.append([self.stack.pop()])
             elif t == '\x4e': # range (n-1..0)
@@ -722,20 +811,6 @@ class GS2(object):
                 x = self.stack.pop()
                 if x > y: x, y = y, x
                 self.stack.append(range(x, y))
-
-            # 4e 4f are TODO
-            elif t in '\x50\x51': # sprintf, sprintf list
-                y = self.stack.pop()
-                x = self.stack.pop()
-
-                if t == '\x50': # single argument
-                    if is_num(x) and is_list(y):
-                        x, y = y, x
-                    y = [y]
-                
-                y = tuple(map(to_ps, y))
-                self.stack.append(to_ps(x) % y)
-
             elif t == '\x52': # show
                 x = self.stack.pop()
                 self.stack.append(to_gs(show(x)))
@@ -785,20 +860,25 @@ class GS2(object):
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(x or y)
-            elif t == '\x62': # divides
+            elif t == '\x62': # divides / left-cons
                 y = self.stack.pop()
                 x = self.stack.pop()
-                self.stack.append(0 if x % y else 1)
-            elif t == '\x63': # divmod / chunks
+                if is_num(x):
+                    self.stack.append(0 if x % y else 1)
+                elif is_list(x):
+                    self.stack.append([y] + x)
+                else:
+                    raise TypeError('divides / left-cons')
+            elif t == '\x63': # divmod / group
                 y = self.stack.pop()
-                x = self.stack.pop()
                 if is_num(y):
+                    x = self.stack.pop()
                     self.stack.append(x // y)
                     self.stack.append(x % y)
                 elif is_list(y):
-                    self.stack.append(chunks(x, y))
+                    self.stack.append(it.groupby(y, lambda k,g: list(g)))
                 else:
-                    raise TypeError('divmod / chunks')
+                    raise TypeError('divmod / group')
             elif t == '\x64': # sum / even
                 x = self.stack.pop()
                 if is_num(x):
@@ -811,14 +891,14 @@ class GS2(object):
                     self.stack.append(1 if x % 2 == 1 else 0)
                 elif is_list(x):
                     self.stack.append(product(x))
-            elif t == '\x66': # fizzbuzz
+            elif t == '\x66': # fizzbuzz (ascii f)
                 fizzbuzz = []
                 for i in range(1, 101):
                     s = ("Fizz" if i % 3 == 0 else "") + \
                         ("Buzz" if i % 5 == 0 else "")
                     fizzbuzz.append(s or str(i))
                 self.stack.append(to_gs('\n'.join(fizzbuzz)))
-            elif t == '\x67': # popcnt
+            elif t == '\x67': # popcnt / right-cons
                 x = self.stack.pop()
                 if is_num(x):
                     x = abs(x)
@@ -827,8 +907,19 @@ class GS2(object):
                         p += (x & 1)
                         x >>= 1
                     self.stack.append(p)
-            elif t in '\x68\x69': # base / binary
-                b = 2 if t == '\x69' else self.stack.pop()
+            elif t == '\x68': # hello
+                x = 0
+                if len(self.stack) >= 1 and is_num(self.stack[-1]):
+                    x = self.stack.pop()
+                    x = (range(0, 11) + [100, 1000, 16, 64, 256]).index(x)
+                s1 = 'h' if x & 1 else 'H'
+                s2 = 'W' if x & 2 else 'w'
+                s3 = ['!', '', '.', '...'][((x & 4) >> 2) | ((x & 16) >> 3)]
+                s4 = '' if x & 8 else ','
+                f = '%sello%s %sorld%s' % (s1, s4, s2, s3)
+                self.stack.append(to_gs(f))
+            elif t in '\x69\x6a': # base / binary
+                b = 2 if t == '\x6a' else self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x):
                     x = abs(x)
@@ -842,30 +933,37 @@ class GS2(object):
                     for i in x[::-1]:
                         res = res * b + i
                     self.stack.append(res)
-            elif t == '\x6a': # is-prime
+                else:
+                    raise TypeError('base / binary')
+            elif t == '\x6b': # is-prime
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(1 if is_prime(x) else 0)
-            elif t == '\x6b': # nth-prime
+                elif is_list(x):
+                    self.stack.append(filter(is_prime, x))
+                else:
+                    raise TypeError('is-prime')
+            elif t == '\x6c': # primes
+                op = self.stack.pop()
                 x = self.stack.pop()
-                if is_num(x):
-                    self.stack.append(nth_prime(x))
-            elif t == '\x6c': # n-primes
-                x = self.stack.pop()
-                if is_num(x):
-                    self.stack.append(n_primes(x))
-            elif t == '\x6d': # primes-below
-                x = self.stack.pop()
-                if is_num(x):
-                    self.stack.append(primes_below(x))
-            elif t == '\x6e': # next-prime
-                x = self.stack.pop()
-                if is_num(x):
-                    self.stack.append(next_prime(x))
-            elif t == '\x6f': # totient
-                x = self.stack.pop()
-                if is_num(x):
-                    self.stack.append(totient(x))
+                if op == 0:   self.stack.append(n_primes(x))
+                elif op == 1: self.stack.append(primes_below(x))
+                elif op == 2: self.stack.append(next_prime(x))
+                elif op == 3: self.stack.append(totient(x))
+                elif op == 4: self.stack.append(factor(x, exps=False))
+                elif op == 5: self.stack.append(factor(x, exps=True))
+            elif t == '\x6d': # scan
+                f = self.stack.pop()
+                def call_f(x, y):
+                    self.stack.append(x)
+                    self.stack.append(y)
+                    self.evaluate(f)
+                    return self.stack.pop()
+                xs = self.stack.pop()
+                res = [xs.pop(0)]
+                while xs:
+                    res.append(call_f(res[-1], xs.pop(0)))
+                self.stack.append(res)
             elif '\x70' <= t <= '\x75': # lt eq gt ge ne le
                 y = self.stack.pop()
                 x = self.stack.pop()
@@ -895,18 +993,33 @@ class GS2(object):
                     self.stack.append(1 if l == sorted_l else 0)
                 else:
                     raise TypeError('sorted')
-            elif t == '\x78': # shift-left
+            elif t == '\x78': # shift-left / inits
                 y = self.stack.pop()
-                x = self.stack.pop()
-                self.stack.append(x << y)
-            elif t == '\x79': # shift-right
+                if is_list(y):
+                    inits = []
+                    for i in xrange(len(y) + 1):
+                        inits.append(y[:i])
+                    self.stack.append(inits)
+                else:
+                    x = self.stack.pop()
+                    self.stack.append(x << y)
+            elif t == '\x79': # shift-right / tails
                 y = self.stack.pop()
-                x = self.stack.pop()
-                self.stack.append(x >> y)
-            elif t == '\x7a': # digit-left
+                if is_list(y):
+                    tails = []
+                    for i in xrange(len(y) + 1):
+                        tails.append(y[len(y)-i:])
+                    self.stack.append(tails)
+                else:
+                    x = self.stack.pop()
+                    self.stack.append(x >> y)
+            elif t == '\x7a': # digit-left / enumerate
                 y = self.stack.pop()
-                x = self.stack.pop()
-                self.stack.append(x * (10 ** y))
+                if is_list(y):
+                    self.stack.append(list(map(list, enumerate(y))))
+                else:
+                    x = self.stack.pop()
+                    self.stack.append(x * (10 ** y))
             elif t == '\x7b': # digit-right
                 y = self.stack.pop()
                 x = self.stack.pop()
@@ -920,67 +1033,135 @@ class GS2(object):
             elif t == '\x7f': # sub-power-of-10
                 self.stack.append(10 ** self.stack.pop() - 1)
 
-            # ascii art stuff
-            elif t == '\x80': # empty-matrix
+            elif t == '\x80': # pair
                 y = self.stack.pop()
                 x = self.stack.pop()
-                self.stack.append([[' ' for ix in xrange(x)]
-                                        for iy in xrange(y)])
-            elif t == '\x81': # matrix-take
+                self.stack.append([x, y])
+            elif t == '\x81': # copies
+                n = self.stack.pop()
+                x = self.stack.pop()
+                self.stack.append([x for _ in xrange(n)])
+            elif t == '\x82': # take-end
                 y = self.stack.pop()
                 x = self.stack.pop()
-                a = self.stack.pop()
-                def f(a, iy, ix):
-                    row = a[iy % len(a)]
-                    return row[ix % len(row)]
-                self.stack.append([[f(a, iy, ix) for ix in xrange(x)]
-                                                 for iy in xrange(y)])
-            elif t == '\x82': # flip
-                a = self.stack.pop()
-                self.stack.append([row[::-1] for row in a])
-            elif t == '\x83': # transpose
-                a = self.stack.pop()
-                self.stack.append(map(list, zip(*a)))
-            elif t == '\x84': # rotate-cw
-                a = self.stack.pop()
-                self.stack.append([list(x)[::-1] for x in zip(*a)])
-            elif t == '\x85': # rotate-ccw
-                a = self.stack.pop()
-                self.stack.append(map(list, zip(*a[::-1])))
-            elif t == '\x86': # show-matrix
-                a = self.stack.pop()
-                if is_num(a):
-                    # TODO formatting options?
-                    a = self.stack.pop()
-                disp_row = lambda r: ''.join(map(show, r)).rstrip()
-                self.stack.append(to_gs('\n'.join(map(disp_row, a))))
-            elif t == '\x87': # from-rows
-                rows = self.stack.pop()
-                # if a number is on top use it as alignment opt
-                method = 'ljust'
-                if is_num(rows):
-                    method = ['center', 'rjust'][rows]
-                    rows = self.stack.pop()
-                width = max(map(len, rows))
-                a = [to_gs(getattr(r, method)(width)) for r in rows]
-                self.stack.append(a)
-
+                if is_num(x) and is_list(y):
+                    x, y = y, x
+                self.stack.append(x[-y:])
+            elif t == '\x83': # cartesian product
+                y = self.stack.pop()
+                x = self.stack.pop()
+                p = it.product(x, y)
+                self.stack.append(list(map(list, p)))
+            elif t == '\x84': # uppercase alphabet
+                self.stack.append(range(ord('A'), ord('Z') + 1))
+            elif t == '\x85': # lowercase alphabet
+                self.stack.append(range(ord('a'), ord('z') + 1))
+            elif t == '\x86': # digits
+                self.stack.append(range(ord('0'), ord('9') + 1))
+            elif t == '\x87': # printable ascii
+                self.stack.append(range(32, 127))
+            elif '\x88' <= t <= '\x8f': # string classes
+                m = [str.isalnum, str.isalpha, str.isdigit,
+                     str.islower, str.isspace, str.isupper,
+                     lambda x: all(32 <= ord(c) <= 126 for c in x),
+                     lambda x: x in '0123456789abcdefABCDEF']
+                p = m[ord(t) - 0x87]
+                x = to_ps(self.stack.pop())
+                self.stack.append(1 if p(x) else 0)
+            elif t == '\x90': # dump
+                for i in self.stack.pop():
+                    self.stack.append(i)
+            elif t == '\x91': # compress
+                ns = self.stack.pop()
+                xs = self.stack.pop()
+                new = []
+                for n, x in zip(ns, xs):
+                    new += [x for _ in xrange(n)]
+                self.stack.append(new)
+            elif t == '\x92': # select
+                xs = self.stack.pop()
+                iis = self.stack.pop()
+                new = []
+                for i in iis:
+                    new.append(xs[i])
+                self.stack.append(new)
+            elif t == '\x93': # permutations
+                xs = self.stack.pop()
+                if is_num(xs):
+                    n = xs
+                    xs = self.stack.pop()
+                else:
+                    n = None
+                ps = list(map(list, it.permutations(xs, n)))
+                self.stack.append(ps)
+            elif t == '\x94': # fold-product
+                xss = self.stack.pop()
+                ys = list(map(list, it.product(*xss)))
+                self.stack.append(ys)
+            elif t == '\x95': # repeat-product
+                n = self.stack.pop()
+                xs = self.stack.pop()
+                ys = list(map(list, it.product(xs, repeat=n)))
+                self.stack.append(ys)
+            elif t == '\x96': # combinations
+                n = self.stack.pop()
+                xs = self.stack.pop()
+                ys = list(map(list, it.combinations(xs, n)))
+                self.stack.append(ys)
+            elif t == '\x97': # combinations-with-replacement
+                n = self.stack.pop()
+                xs = self.stack.pop()
+                ys = list(map(list, it.combinations_with_replacement(xs, n)))
+                self.stack.append(ys)
+            elif t == '\x98': # pairwise
+                xs = self.stack.pop()
+                ys = map(list, zip(xs, xs[1:]))
+                self.stack.append(ys)
+            elif t == '\x99': # flatten
+                def flatten(xs):
+                    acc = []
+                    for x in xs:
+                        if is_list(x):
+                            acc += flatten(x)
+                        else:
+                            acc.append(x)
+                    return acc
+                xs = self.stack.pop()
+                self.stack.append(flatten(xs))
+            elif t == '\x9a': # transpose
+                xs = self.stack.pop()
+                self.stack.append(map(list, zip(*xs)))
             elif '\xa0' <= t <= '\xaf': # junk
                 self.stack.append(self.stack.junk[-1 - (ord(t) & 15)])
-            elif '\xb0' <= t <= '\xb7': # save
-                self.regs[ord(t) & 7] = self.stack[-1]
-            elif '\xb8' <= t <= '\xbf': # put
-                self.regs[ord(t) & 7] = self.stack.pop()
-            elif '\xc0' <= t <= '\xc7': # get
-                self.stack.append(self.regs[ord(t) & 7])
-            elif '\xc8' <= t <= '\xcf': # exchange
-                temp = self.regs[ord(t) & 7]
-                self.regs[ord(t) & 7] = self.stack.pop()
-                self.stack.append(temp)
-            elif '\xd0' <= t <= '\xd7': # tuck
-                self.stack.insert(-1, self.regs[ord(t) & 7])
-            elif '\xd8' <= t <= '\xdf': # show
-                self.stack.append(show(self.regs[ord(t) & 7]))
+            elif t == '\xb0': # zip
+                xs = self.stack.pop()
+                ys = self.stack.pop()
+                self.stack.append(map(list, zip(xs, ys)))
+            elif t == '\xb1': # zipwith
+                f = self.stack.pop()
+                xs = self.stack.pop()
+                ys = self.stack.pop()
+                l0 = len(self.stack)
+                for x, y in zip(xs, ys):
+                    self.stack.append(x)
+                    self.stack.append(y)
+                    self.evaluate(f)
+                self.stack[l0:] = [self.stack[l0:]]
+            elif t == '\xb2': # counter
+                self.stack.append(self.counter)
+                self.counter += 1
+            elif '\xc8' <= t <= '\xcb': # save
+                self.regs[ord(t) & 3] = self.stack[-1]
+            elif '\xcc' <= t <= '\xcf': # put
+                self.regs[ord(t) & 3] = self.stack.pop()
+            elif '\xd0' <= t <= '\xd3': # get
+                self.stack.append(self.regs[ord(t) & 3])
+            elif '\xd4' <= t <= '\xd7': # nip
+                self.regs[ord(t) & 3] = self.stack.pop(-2)
+            elif '\xd8' <= t <= '\xdb': # tuck
+                self.stack.insert(-1, self.regs[ord(t) & 3])
+            elif '\xdc' <= t <= '\xdf': # show
+                self.stack.append(show(self.regs[ord(t) & 3]))
             else:
                 raise ValueError('invalid token %r' % t) 
 
@@ -1000,14 +1181,15 @@ class GS2(object):
                 self.stack.append(i)
         self.stack[l0:] = [self.stack[l0:]]
 
-if len(sys.argv) <= 1:
-    print >> sys.stderr, 'usage: python %s [-d] <code file>' % sys.argv[0]
-    sys.exit(1)
+if __name__ == '__main__':
+    if len(sys.argv) <= 1:
+        print >> sys.stderr, 'usage: python %s [-d] <code file>' % sys.argv[0]
+        sys.exit(1)
 
-if sys.argv[1] == '-d':
-    DEBUG = True
-    sys.argv.pop(1)
+    if sys.argv[1] == '-d':
+        DEBUG = True
+        sys.argv.pop(1)
 
-code = open(sys.argv[1], 'rb').read()
-stdin = '' if sys.stdin.isatty() else sys.stdin.read()
-GS2(code, stdin).run()
+    code = open(sys.argv[1], 'rb').read()
+    stdin = '' if sys.stdin.isatty() else sys.stdin.read()
+    GS2(code, stdin).run()
