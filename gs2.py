@@ -20,7 +20,7 @@ from fractions import gcd
 Block = namedtuple('Block', 'code')
 STRING_ENDS = '\x05\x06' + ''.join(map(chr, range(0x9b, 0xa0)))
 
-DEBUG = True
+DEBUG = False
 
 def log(x):
     if not DEBUG: return
