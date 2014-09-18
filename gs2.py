@@ -136,7 +136,7 @@ def factor(n, exps=False):
                 n //= p
             p = next_prime(p)
         if exps:
-            res = list(it.groupby(res, lambda k, g: [k, len(g)]))
+            res = [[k, len(g)] for k, g in it.groupby(res)]
         return res
     elif is_list(n):
         if is_num(n[0]):
@@ -876,7 +876,8 @@ class GS2(object):
                     self.stack.append(x // y)
                     self.stack.append(x % y)
                 elif is_list(y):
-                    self.stack.append(list(it.groupby(y, lambda k,g: list(g))))
+                    gb = [list(g) for k, g in it.groupby('AAAABBBCCD')]
+                    self.stack.append(list(gb))
                 else:
                     raise TypeError('divmod / group')
             elif t == '\x64': # sum / even
