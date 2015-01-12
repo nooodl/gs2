@@ -187,10 +187,10 @@ def tokenize(prog):
     while i < len(tokens):
         t = tokens[i]
         log(tokens[i:])
-        if t == '\x08': # open block
+        if t == '\x08': #= {
             blocks.append(Block([]))
             final.append('\x00')
-        elif t == '\x09': # close block
+        elif t == '\x09': #= }
             blocks[-2].code.append(blocks.pop())
             blocks[-1].code.append(final.pop())
         elif '\xe0' <= t <= '\xff' and ord(t) & 7 < 6:
@@ -204,23 +204,23 @@ def tokenize(prog):
             del blocks[-1].code[-num:]
             blocks[-1].code.append(Block(ts))
             blocks[-1].code.append('\x00\x34\x35\x38'[(ord(t) >> 3) & 3])
-        elif t in '\xee\xef':
+        elif t in '\xee\xef': #= z1 zipwith1, z2 zipwith2
             # zipwith (1/2 tokens)
             num = (ord(t) & 1) + 1
             ts = blocks[-1].code[-num:]
             del blocks[-1].code[-num:]
             blocks[-1].code.append(Block(ts))
             blocks[-1].code.append('\xb1')
-        elif t in '\xf6\xf7':
+        elif t in '\xf6\xf7': #= dm1 dump-map1, df1 dump-filter1
             # like m1/f1 with dump prepended to block
             # useful with transpose, pairwise, cartesian-product, etc.
             f = {'\xfc': '\x34', '\xfd': '\x35'}[t]
             x = blocks[-1].code.pop()
             blocks[-1].code.extend([Block(['\x90', x]), f])
-        elif t == '\xfe': # open rest-of-program map 
+        elif t == '\xfe': #= m:
             blocks.append(Block([]))
             final.append('\x34')
-        elif t == '\xff': # open rest-of-program filter 
+        elif t == '\xff': #= f:
             blocks.append(Block([]))
             final.append('\x35')
         else:
@@ -311,7 +311,7 @@ class GS2(object):
         for t in block.code:
             if is_block(t):
                 self.stack.append(t)
-            elif t[0] == '\x00': # nop
+            elif t[0] == '\x00': #= nop
                 pass
             elif t[0] == '\x01': # push unsigned byte
                 self.stack.append(struct.unpack('<B', t[1:])[0])
@@ -365,18 +365,18 @@ class GS2(object):
                 self.stack.append([ord(t[1])])
 
             # \x08 and \x09 are block syntax
-            elif t == '\x0a': # push "\n"
+            elif t == '\x0a': #= new-line
                 self.stack.append([ord('\n')])
-            elif t == '\x0b': # push []
+            elif t == '\x0b': #= empty-list
                 self.stack.append([])
-            elif t == '\x0c': # push {}
+            elif t == '\x0c': #= empty-block
                 self.stack.append(Block([]))
-            elif t == '\x0d': # push " "
+            elif t == '\x0d': #= space
                 self.stack.append([ord(' ')])
-            elif t == '\x0e': # array of top n elements
+            elif t == '\x0e': #= make-array
                 size = self.stack.pop()
                 self.stack[-size:] = [self.stack[-size:]]
-            elif t == '\x0f': # stop program
+            elif t == '\x0f': #= exit
                 break
 
             elif 0x10 <= ord(t[0]) <= 0x1a: # push small number
@@ -387,7 +387,7 @@ class GS2(object):
             elif t == '\x1e': self.stack.append(64)
             elif t == '\x1f': self.stack.append(256)
 
-            elif t == '\x20': # negate / reverse / eval
+            elif t == '\x20': #= negate reverse eval
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(-x)
@@ -398,7 +398,7 @@ class GS2(object):
                 else:
                     raise TypeError('negate / reverse')
 
-            elif t == '\x21': # bitwise not / head
+            elif t == '\x21': #= bnot head
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(~x)
@@ -407,7 +407,7 @@ class GS2(object):
                 else:
                     raise TypeError('bitwise not / head')
 
-            elif t == '\x22': # not / tail
+            elif t == '\x22': #= not tail
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(0 if x else 1)
@@ -416,7 +416,7 @@ class GS2(object):
                 else:
                     raise TypeError('not / tail')
 
-            elif t == '\x23': # abs / init
+            elif t == '\x23': #= abs init
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(abs(x))
@@ -425,7 +425,7 @@ class GS2(object):
                 else:
                     raise TypeError('abs / init')
 
-            elif t == '\x24': # digits / last
+            elif t == '\x24': #= digits last
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(map(int, str(abs(x))))
@@ -434,7 +434,7 @@ class GS2(object):
                 else:
                     raise ValueError('digits / last')
 
-            elif t == '\x25': # random
+            elif t == '\x25': #= random
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(random.randrange(x))
@@ -443,7 +443,7 @@ class GS2(object):
                 else:
                     raise TypeError('random')
 
-            elif t == '\x26': # deincrement / left uncons
+            elif t == '\x26': #= dec left-uncons
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(x - 1)
@@ -453,7 +453,7 @@ class GS2(object):
                 else:
                     raise TypeError('deincrement / left uncons')
 
-            elif t == '\x27': # increment / right uncons
+            elif t == '\x27': #= inc right-uncons
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(x + 1)
@@ -463,7 +463,7 @@ class GS2(object):
                 else:
                     raise TypeError('increment / right uncons')
 
-            elif t == '\x28': # sign / min
+            elif t == '\x28': #= sign min
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(cmp(x, 0))
@@ -472,7 +472,7 @@ class GS2(object):
                 else:
                     raise TypeError('sign / min')
 
-            elif t == '\x29': # thousand / max
+            elif t == '\x29': #= thousand max
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(x * 1000)
@@ -481,7 +481,7 @@ class GS2(object):
                 else:
                     raise TypeError('thousand / max')
 
-            elif t == '\x2a': # double / lines
+            elif t == '\x2a': #= double lines
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(x * 2)
@@ -490,7 +490,7 @@ class GS2(object):
                 else:
                     raise TypeError('double / line')
 
-            elif t == '\x2b': # half / unlines
+            elif t == '\x2b': #= half unlines
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(x // 2)
@@ -500,7 +500,7 @@ class GS2(object):
                 else:
                     raise TypeError('half / unlines')
 
-            elif t == '\x2c': # square / words
+            elif t == '\x2c': #= square words
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(x * x)
@@ -509,7 +509,7 @@ class GS2(object):
                 else:
                     raise TypeError('square / words')
 
-            elif t == '\x2d': # sqrt / unwords
+            elif t == '\x2d': #= sqrt unwords
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(int(math.sqrt(x)))
@@ -519,7 +519,7 @@ class GS2(object):
                 else:
                     raise TypeError('sqrt / unwords')
 
-            elif t == '\x2e': # range (0..n-1) / length
+            elif t == '\x2e': #= range length
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(range(x))
@@ -528,7 +528,7 @@ class GS2(object):
                 else:
                     raise TypeError('range / length')
 
-            elif t == '\x2f': # range' (1..n) / sort
+            elif t == '\x2f': #= range1 sort
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(range(1, x + 1))
@@ -544,7 +544,7 @@ class GS2(object):
                 else:
                     raise TypeError('range1 / sort')
 
-            elif t == '\x30': # add / catenate
+            elif t == '\x30': #= + add catenate
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x) and is_num(y):
@@ -560,7 +560,7 @@ class GS2(object):
                 else:
                     raise TypeError('add / catenate')
 
-            elif t == '\x31': # subtract / set diff
+            elif t == '\x31': #= - sub diff
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x) and is_num(y):
@@ -574,7 +574,7 @@ class GS2(object):
                 else:
                     raise TypeError('subtract / set diff')
 
-            elif t == '\x32': # multiply / join / times / fold
+            elif t == '\x32': #= * mul join times fold
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x) and (is_block(y) or is_list(y)):
@@ -599,7 +599,7 @@ class GS2(object):
                 else:
                     raise TypeError('multiply / join / times / fold')
 
-            elif t == '\x33': # divide / chunks / split / each
+            elif t == '\x33': #= / div chunks split each
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -619,7 +619,7 @@ class GS2(object):
                 else:
                     raise TypeError('divide / chunks / split / each')
 
-            elif t == '\x34': # modulo / step / split' / map
+            elif t == '\x34': #= % mod step clean-split map
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -637,7 +637,7 @@ class GS2(object):
                 else:
                     raise TypeError('modulo / step / split\' / map')
 
-            elif t == '\x35': # and / get / when / filter
+            elif t == '\x35': #= & and get when filter
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -661,7 +661,7 @@ class GS2(object):
                 else:
                     raise TypeError('and / get / when / filter')
 
-            elif t == '\x36': # or / unless
+            elif t == '\x36': #= | or unless
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -677,7 +677,7 @@ class GS2(object):
                 else:
                     raise TypeError('bor / unless')
 
-            elif t == '\x37': # xor / concatmap
+            elif t == '\x37': #= ^ xor concatmap
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -698,7 +698,7 @@ class GS2(object):
                 else:
                     raise TypeError('xor / concatmap')
 
-            elif t == '\x38': # smallest / both
+            elif t == '\x38': #= smallest both
                 y = self.stack.pop()
                 if is_block(y):
                     x = self.stack.pop()
@@ -709,18 +709,18 @@ class GS2(object):
                     x = self.stack.pop()
                     self.stack.append(min(x, y))
 
-            elif t == '\x39': # biggest
+            elif t == '\x39': #= biggest
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(max(x, y))
 
-            elif t == '\x3a': # clamp
+            elif t == '\x3a': #= clamp
                 z = self.stack.pop()
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(min(max(x, y), z))
 
-            elif t == '\x3c': # gcd / take
+            elif t == '\x3c': #= gcd take
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -734,7 +734,7 @@ class GS2(object):
                 else:
                     raise TypeError('gcd / take')
 
-            elif t == '\x3d': # lcm / drop
+            elif t == '\x3d': #= lcm drop
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -748,7 +748,7 @@ class GS2(object):
                 else:
                     raise TypeError('lcm / drop')
 
-            elif t == '\x3e': # power / index
+            elif t == '\x3e': #= pow index
                 y = self.stack.pop()
                 x = self.stack.pop()
 
@@ -762,7 +762,7 @@ class GS2(object):
                 else:
                     raise TypeError('power / index')
 
-            elif t == '\x3f': # log / member
+            elif t == '\x3f': #= log member
                 y = self.stack.pop()
                 x = self.stack.pop()
                 
@@ -776,77 +776,76 @@ class GS2(object):
                 else:
                     raise TypeError('log / member')
 
-            elif t == '\x40': # dup
+            elif t == '\x40': #= dup
                 self.stack.append(self.stack[-1])
-            elif t == '\x41': # dup2
+            elif t == '\x41': #= dup2
                 self.stack.append(self.stack[-1])
                 self.stack.append(self.stack[-1])
-            elif t == '\x42': # swap
+            elif t == '\x42': #= swap
                 self.stack.append(self.stack.pop(-2))
-            elif t == '\x43': # rot
+            elif t == '\x43': #= rot
                 self.stack.append(self.stack.pop(-3))
-            elif t == '\x44': # rrot
+            elif t == '\x44': #= rrot
                 self.stack.append(self.stack.pop(-3))
                 self.stack.append(self.stack.pop(-3))
-            elif t == '\x45': # over
+            elif t == '\x45': #= over
                 self.stack.append(self.stack[-2])
-            elif t == '\x46': # nip
+            elif t == '\x46': #= nip
                 self.stack.pop(-2)
-            elif t == '\x47': # tuck
+            elif t == '\x47': #= tuck
                 self.stack.insert(-2, self.stack[-1])
-            elif t == '\x48': # 2dup
+            elif t == '\x48': #= 2dup
                 self.stack.append(self.stack[-2])
                 self.stack.append(self.stack[-2])
-            elif t == '\x49': # pick
+            elif t == '\x49': #= pick
                 n = self.stack.pop()
                 self.stack.append(self.stack[-n])
-            elif t == '\x4a': # roll
+            elif t == '\x4a': #= roll
                 n = self.stack.pop()
                 self.stack.append(self.stack.pop(-n))
-            elif t == '\x4b': # get stack
+            elif t == '\x4b': #= get-stack
                 self.stack.append(copy.deepcopy(self.stack))
-            elif t == '\x4c': # leave top only
+            elif t == '\x4c': #= leave-top
                 del self.stack[:-1]
-            elif t == '\x4d': # itemize
+            elif t == '\x4d': #= itemize
                 self.stack.append([self.stack.pop()])
-            elif t == '\x4e': # range (n-1..0)
+            elif t == '\x4e': #= rrange
                 x = self.stack.pop()
                 self.stack.append(range(x)[::-1])
-            elif t == '\x4f': # custom-range
+            elif t == '\x4f': #= crange
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if x > y: x, y = y, x
                 self.stack.append(range(x, y))
-            elif t == '\x52': # show
+            elif t == '\x52': #= show
                 x = self.stack.pop()
                 self.stack.append(to_gs(show(x)))
-            elif t == '\x53': # map show
+            elif t == '\x53': #= map-show
                 x = self.stack.pop()
                 self.stack.append(map(to_gs, map(show, x)))
-            elif t == '\x54': # show lines
+            elif t == '\x54': #= show-lines
                 x = self.stack.pop()
                 self.stack.append(to_gs('\n'.join(map(show, x))))
-            elif t == '\x55': # show words
+            elif t == '\x55': #= show-words
                 x = self.stack.pop()
                 self.stack.append(to_gs(' '.join(map(show, x))))
-            elif t in '\x56\x57': # read number/numbers from string
+            elif t in '\x56\x57': #= read-num, read-nums
                 x = to_ps(self.stack.pop())
                 nums = map(int, re.findall(r'-?\d+', x))
                 self.stack.append(nums[0] if t == '\x56' else nums)
-                # TODO test this
-            elif t == '\x58': # show with newline
+            elif t == '\x58': #= show-line
                 x = self.stack.pop()
                 self.stack.append(to_gs(show(x) + '\n'))
-            elif t == '\x59': # show with space
+            elif t == '\x59': #= show-space
                 x = self.stack.pop()
                 self.stack.append(to_gs(show(x) + ' '))
-            elif t == '\x5a': # show joined with ', '
+            elif t == '\x5a': #= show-comma
                 x = self.stack.pop()
                 self.stack.append(to_gs(', '.join(map(show, x))))
-            elif t == '\x5b': # show 'python style'
+            elif t == '\x5b': #= show-python
                 x = self.stack.pop()
                 self.stack.append(to_gs(', '.join(map(show, x)).join('[]')))
-            elif t in '\x5c\x5d\x5e': # ljust, center, rjust
+            elif t in '\x5c\x5d\x5e': #= ljust, center, rjust
                 fill_char = ' ' 
                 if is_num(self.stack[-2]):
                     fill_char = chr(self.stack.pop())
@@ -856,17 +855,17 @@ class GS2(object):
                 if t == '\x5d': g = show(s).center(width)
                 if t == '\x5e': g = show(s).rjust(width)
                 self.stack.append(to_gs(g))
-            elif t == '\x5f': # inspect
+            elif t == '\x5f': #= inspect
                 self.stack.append(to_gs(repr(self.stack.pop())))
-            elif t == '\x60': # logical and
+            elif t == '\x60': #= logical-and
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(x and y)
-            elif t == '\x61': # logical or
+            elif t == '\x61': #= logical-or
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(x or y)
-            elif t == '\x62': # divides / left-cons
+            elif t == '\x62': #= divides left-cons
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x):
@@ -875,7 +874,7 @@ class GS2(object):
                     self.stack.append([y] + x)
                 else:
                     raise TypeError('divides / left-cons')
-            elif t == '\x63': # divmod / group
+            elif t == '\x63': #= divmod group
                 y = self.stack.pop()
                 if is_num(y):
                     x = self.stack.pop()
@@ -886,26 +885,26 @@ class GS2(object):
                     self.stack.append(list(gb))
                 else:
                     raise TypeError('divmod / group')
-            elif t == '\x64': # sum / even
+            elif t == '\x64': #= sum even
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(1 if x % 2 == 0 else 0)
                 elif is_list(x):
                     self.stack.append(sum(x))
-            elif t == '\x65': # product / odd
+            elif t == '\x65': #= product odd
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(1 if x % 2 == 1 else 0)
                 elif is_list(x):
                     self.stack.append(product(x))
-            elif t == '\x66': # fizzbuzz (ascii f)
+            elif t == '\x66': #= fizzbuzz
                 fizzbuzz = []
                 for i in range(1, 101):
                     s = ("Fizz" if i % 3 == 0 else "") + \
                         ("Buzz" if i % 5 == 0 else "")
                     fizzbuzz.append(s or str(i))
                 self.stack.append(to_gs('\n'.join(fizzbuzz)))
-            elif t == '\x67': # popcnt / right-cons
+            elif t == '\x67': #= popcnt
                 x = self.stack.pop()
                 if is_num(x):
                     x = abs(x)
@@ -914,7 +913,7 @@ class GS2(object):
                         p += (x & 1)
                         x >>= 1
                     self.stack.append(p)
-            elif t == '\x68': # hello
+            elif t == '\x68': #= hello
                 x = 0
                 if len(self.stack) >= 1 and is_num(self.stack[-1]):
                     x = self.stack.pop()
@@ -925,7 +924,7 @@ class GS2(object):
                 s4 = '' if x & 8 else ','
                 f = '%sello%s %sorld%s' % (s1, s4, s2, s3)
                 self.stack.append(to_gs(f))
-            elif t in '\x69\x6a': # base / binary
+            elif t in '\x69\x6a': #= base, binary
                 b = 2 if t == '\x6a' else self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x):
@@ -942,7 +941,7 @@ class GS2(object):
                     self.stack.append(res)
                 else:
                     raise TypeError('base / binary')
-            elif t == '\x6b': # is-prime
+            elif t == '\x6b': #= is-prime
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack.append(1 if is_prime(x) else 0)
@@ -950,7 +949,7 @@ class GS2(object):
                     self.stack.append(filter(is_prime, x))
                 else:
                     raise TypeError('is-prime')
-            elif t == '\x6c': # primes
+            elif t == '\x6c': #= primes
                 op = self.stack.pop()
                 x = self.stack.pop()
                 if op == 0:   self.stack.append(n_primes(x))
@@ -959,7 +958,7 @@ class GS2(object):
                 elif op == 3: self.stack.append(totient(x))
                 elif op == 4: self.stack.append(factor(x, exps=False))
                 elif op == 5: self.stack.append(factor(x, exps=True))
-            elif t == '\x6d': # scan
+            elif t == '\x6d': #= scan
                 f = self.stack.pop()
                 def call_f(x, y):
                     self.stack.append(x)
@@ -971,7 +970,7 @@ class GS2(object):
                 while xs:
                     res.append(call_f(res[-1], xs.pop(0)))
                 self.stack.append(res)
-            elif '\x70' <= t <= '\x75': # lt eq gt ge ne le
+            elif t in '\x70\x71\x72\x73\x74\x75': #= lt <, eq =, gt >, ge >=, ne !=, le <=
                 y = self.stack.pop()
                 x = self.stack.pop()
                 ops = {
@@ -983,11 +982,11 @@ class GS2(object):
                     '\x75': operator.le,
                 }
                 self.stack.append(1 if ops[t](x, y) else 0)
-            elif t == '\x76': # compare
+            elif t == '\x76': #= cmp
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(cmp(x, y))
-            elif t == '\x77': # sorted
+            elif t == '\x77': #= is-sorted
                 if is_list(x):
                     self.stack.append(1 if x == list(sorted(x)) else 0)
                 elif is_block(x):
@@ -1000,7 +999,7 @@ class GS2(object):
                     self.stack.append(1 if l == sorted_l else 0)
                 else:
                     raise TypeError('sorted')
-            elif t == '\x78': # shift-left / inits
+            elif t == '\x78': #= shift-left inits
                 y = self.stack.pop()
                 if is_list(y):
                     inits = []
@@ -1010,7 +1009,7 @@ class GS2(object):
                 else:
                     x = self.stack.pop()
                     self.stack.append(x << y)
-            elif t == '\x79': # shift-right / tails
+            elif t == '\x79': #= shift-right tails
                 y = self.stack.pop()
                 if is_list(y):
                     tails = []
@@ -1020,54 +1019,54 @@ class GS2(object):
                 else:
                     x = self.stack.pop()
                     self.stack.append(x >> y)
-            elif t == '\x7a': # digit-left / enumerate
+            elif t == '\x7a': #= digit-left enumerate
                 y = self.stack.pop()
                 if is_list(y):
                     self.stack.append(list(map(list, enumerate(y))))
                 else:
                     x = self.stack.pop()
                     self.stack.append(x * (10 ** y))
-            elif t == '\x7b': # digit-right
+            elif t == '\x7b': #= digit-right
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append(x // (10 ** y))
-            elif t == '\x7c': # power-of-2
+            elif t == '\x7c': #= power-of-2
                 self.stack.append(2 ** self.stack.pop())
-            elif t == '\x7d': # power-of-10
+            elif t == '\x7d': #= power-of-10
                 self.stack.append(10 ** self.stack.pop())
-            elif t == '\x7e': # sub-power-of-2
+            elif t == '\x7e': #= sub-power-of-2
                 self.stack.append(2 ** self.stack.pop() - 1)
-            elif t == '\x7f': # sub-power-of-10
+            elif t == '\x7f': #= sub-power-of-10
                 self.stack.append(10 ** self.stack.pop() - 1)
 
-            elif t == '\x80': # pair
+            elif t == '\x80': #= pair
                 y = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append([x, y])
-            elif t == '\x81': # copies
+            elif t == '\x81': #= copies
                 n = self.stack.pop()
                 x = self.stack.pop()
                 self.stack.append([x for _ in xrange(n)])
-            elif t == '\x82': # take-end
+            elif t == '\x82': #= take-end
                 y = self.stack.pop()
                 x = self.stack.pop()
                 if is_num(x) and is_list(y):
                     x, y = y, x
                 self.stack.append(x[-y:])
-            elif t == '\x83': # cartesian product
+            elif t == '\x83': #= cartesian-product
                 y = self.stack.pop()
                 x = self.stack.pop()
                 p = it.product(x, y)
                 self.stack.append(list(map(list, p)))
-            elif t == '\x84': # uppercase alphabet
+            elif t == '\x84': #= uppercase-alphabet
                 self.stack.append(range(ord('A'), ord('Z') + 1))
-            elif t == '\x85': # lowercase alphabet
+            elif t == '\x85': #= lowercase-alphabet
                 self.stack.append(range(ord('a'), ord('z') + 1))
-            elif t == '\x86': # digits
+            elif t == '\x86': #= ascii-digits
                 self.stack.append(range(ord('0'), ord('9') + 1))
-            elif t == '\x87': # printable ascii
+            elif t == '\x87': #= printable-ascii
                 self.stack.append(range(32, 127))
-            elif '\x88' <= t <= '\x8f': # string classes
+            elif t in '\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f': #= is-alnum, is-alpha, is-digit, is-lower, is-space, is-upper, is-printable, is-hexdigit
                 m = [str.isalnum, str.isalpha, str.isdigit,
                      str.islower, str.isspace, str.isupper,
                      lambda x: all(32 <= ord(c) <= 126 for c in x),
@@ -1075,24 +1074,24 @@ class GS2(object):
                 p = m[ord(t) - 0x87]
                 x = to_ps(self.stack.pop())
                 self.stack.append(1 if p(x) else 0)
-            elif t == '\x90': # dump
+            elif t == '\x90': #= dump
                 for i in self.stack.pop():
                     self.stack.append(i)
-            elif t == '\x91': # compress
+            elif t == '\x91': #= compress
                 ns = self.stack.pop()
                 xs = self.stack.pop()
                 new = []
                 for n, x in zip(ns, xs):
                     new += [x for _ in xrange(n)]
                 self.stack.append(new)
-            elif t == '\x92': # select
+            elif t == '\x92': #= select
                 xs = self.stack.pop()
                 iis = self.stack.pop()
                 new = []
                 for i in iis:
                     new.append(xs[i])
                 self.stack.append(new)
-            elif t == '\x93': # permutations
+            elif t == '\x93': #= permutations
                 xs = self.stack.pop()
                 if is_num(xs):
                     n = xs
@@ -1101,30 +1100,30 @@ class GS2(object):
                     n = None
                 ps = list(map(list, it.permutations(xs, n)))
                 self.stack.append(ps)
-            elif t == '\x94': # fold-product
+            elif t == '\x94': #= fold-product
                 xss = self.stack.pop()
                 ys = list(map(list, it.product(*xss)))
                 self.stack.append(ys)
-            elif t == '\x95': # repeat-product
+            elif t == '\x95': #= repeat-product
                 n = self.stack.pop()
                 xs = self.stack.pop()
                 ys = list(map(list, it.product(xs, repeat=n)))
                 self.stack.append(ys)
-            elif t == '\x96': # combinations
+            elif t == '\x96': #= combinations
                 n = self.stack.pop()
                 xs = self.stack.pop()
                 ys = list(map(list, it.combinations(xs, n)))
                 self.stack.append(ys)
-            elif t == '\x97': # combinations-with-replacement
+            elif t == '\x97': #= combinations-with-replacement
                 n = self.stack.pop()
                 xs = self.stack.pop()
                 ys = list(map(list, it.combinations_with_replacement(xs, n)))
                 self.stack.append(ys)
-            elif t == '\x98': # pairwise
+            elif t == '\x98': #= pairwise
                 xs = self.stack.pop()
                 ys = map(list, zip(xs, xs[1:]))
                 self.stack.append(ys)
-            elif t == '\x99': # flatten
+            elif t == '\x99': #= flatten
                 def flatten(xs):
                     acc = []
                     for x in xs:
@@ -1135,16 +1134,16 @@ class GS2(object):
                     return acc
                 xs = self.stack.pop()
                 self.stack.append(flatten(xs))
-            elif t == '\x9a': # transpose
+            elif t == '\x9a': #= transpose
                 xs = self.stack.pop()
                 self.stack.append(map(list, zip(*xs)))
-            elif '\xa0' <= t <= '\xaf': # junk
+            elif '\xa0' <= t <= '\xaf': # junk (recently popped items)
                 self.stack.append(self.stack.junk[-1 - (ord(t) & 15)])
-            elif t == '\xb0': # zip
+            elif t == '\xb0': #= zip
                 xs = self.stack.pop()
                 ys = self.stack.pop()
                 self.stack.append(map(list, zip(xs, ys)))
-            elif t == '\xb1': # zipwith
+            elif t == '\xb1': #= zipwith
                 f = self.stack.pop()
                 xs = self.stack.pop()
                 ys = self.stack.pop()
@@ -1154,7 +1153,7 @@ class GS2(object):
                     self.stack.append(y)
                     self.evaluate(f)
                 self.stack[l0:] = [self.stack[l0:]]
-            elif t == '\xb2': # counter
+            elif t == '\xb2': #= counter
                 self.stack.append(self.counter)
                 self.counter += 1
             elif '\xc8' <= t <= '\xcb': # save
