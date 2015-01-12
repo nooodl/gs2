@@ -846,14 +846,14 @@ class GS2(object):
                 x = self.stack.pop()
                 self.stack.append(to_gs(', '.join(map(show, x)).join('[]')))
             elif t in '\x5c\x5d\x5e': #= ljust, center, rjust
-                fill_char = ' ' 
+                fill = ' ' 
                 if is_num(self.stack[-2]):
-                    fill_char = chr(self.stack.pop())
+                    fill = chr(self.stack.pop())
                 width = self.stack.pop()
                 s = self.stack.pop()
-                if t == '\x5c': g = show(s).ljust(width)
-                if t == '\x5d': g = show(s).center(width)
-                if t == '\x5e': g = show(s).rjust(width)
+                if t == '\x5c': g = show(s).ljust(width, fill)
+                if t == '\x5d': g = show(s).center(width, fill)
+                if t == '\x5e': g = show(s).rjust(width, fill)
                 self.stack.append(to_gs(g))
             elif t == '\x5f': #= inspect
                 self.stack.append(to_gs(repr(self.stack.pop())))
@@ -904,7 +904,7 @@ class GS2(object):
                         ("Buzz" if i % 5 == 0 else "")
                     fizzbuzz.append(s or str(i))
                 self.stack.append(to_gs('\n'.join(fizzbuzz)))
-            elif t == '\x67': #= popcnt
+            elif t == '\x67': #= popcnt right-cons
                 x = self.stack.pop()
                 if is_num(x):
                     x = abs(x)
@@ -913,6 +913,9 @@ class GS2(object):
                         p += (x & 1)
                         x >>= 1
                     self.stack.append(p)
+                elif is_list(x):
+                    y = self.stack.pop()
+                    self.stack.append(x + [y])
             elif t == '\x68': #= hello
                 x = 0
                 if len(self.stack) >= 1 and is_num(self.stack[-1]):
@@ -987,6 +990,7 @@ class GS2(object):
                 x = self.stack.pop()
                 self.stack.append(cmp(x, y))
             elif t == '\x77': #= is-sorted
+                x = self.stack.pop()
                 if is_list(x):
                     self.stack.append(1 if x == list(sorted(x)) else 0)
                 elif is_block(x):
