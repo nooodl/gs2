@@ -31,6 +31,12 @@ def lcm(a, b):
     if (a, b) == (0, 0): return 0
     return abs(a * b) // gcd(a, b)
 
+def product(xs):
+    p = 1
+    for x in xs:
+        p *= x
+    return p
+
 def split(a, b, clean=False):
     res = [[]]
     lb = len(b)
