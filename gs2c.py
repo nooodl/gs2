@@ -105,6 +105,8 @@ def compile_gs2(s):
             if i[0] == '"':
                 if string_mode:
                     strings.append(eval(i))
+                elif len(eval(i)) == 1:
+                    output_code.append('\x07' + eval(i))
                 else:
                     output_code.append('\x04' + eval(i) + '\x05')
             else:
