@@ -214,7 +214,7 @@ def tokenize(prog):
         elif t in '\xf6\xf7': #= dm1 dump-map1, df1 dump-filter1
             # like m1/f1 with dump prepended to block
             # useful with transpose, pairwise, cartesian-product, etc.
-            f = {'\xfc': '\x34', '\xfd': '\x35'}[t]
+            f = {'\xf6': '\x34', '\xf7': '\x35'}[t]
             x = blocks[-1].code.pop()
             blocks[-1].code.extend([Block(['\x90', x]), f])
         elif t == '\xfe': #= m:
