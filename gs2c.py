@@ -18,7 +18,8 @@ with open('gs2.py') as f:
             b = b.strip().split(', ')
             assert len(a) == len(b)
             for i, j in zip(a, b):
-                mnemonics[j] = chr(int(i, 16))
+                for k in j.split():
+                    mnemonics[k] = chr(int(i, 16))
 
 mnemonics["'"] = '\xe0'  # block1
 
