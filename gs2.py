@@ -803,8 +803,8 @@ class GS2(object):
             elif t == '\x4a': #= roll
                 n = self.stack.pop()
                 self.stack.append(self.stack.pop(-n))
-            elif t == '\x4b': #= get-stack
-                self.stack.append(copy.deepcopy(self.stack))
+            elif t == '\x4b': #= wrap-stack
+                self.stack = [copy.deepcopy(self.stack)]
             elif t == '\x4c': #= leave-top
                 del self.stack[:-1]
             elif t == '\x4d': #= itemize
