@@ -234,11 +234,11 @@ def tokenize(prog):
     assert len(blocks) == 1
     main = blocks[0]
     
-    if mode == '\x30': # map over lines
+    if mode == '\x30': #= line-mode
         main = Block(['\x2a', main, '\x34', '\x54'])
-    elif mode == '\x31': # map over words
+    elif mode == '\x31': #= word-mode
         main = Block(['\x2c', main, '\x34', '\x55'])
-    elif mode == '\x32': # map over lines, skipping first
+    elif mode == '\x32': #= line-mode-skip-first
         main = Block(['\x2a', '\x22', main, '\x34', '\x54'])
     
     main.code.extend(final)
