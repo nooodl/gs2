@@ -252,7 +252,7 @@ def to_gs(ps): return map(ord, ps)
 
 def to_ps(gs):
     if is_list(gs): return ''.join(map(chr, gs))
-    else: return gs
+    else: return chr(gs)
     
 def regex_count(pattern):
     c = 0
