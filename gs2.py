@@ -1075,7 +1075,7 @@ class GS2(object):
                      str.islower, str.isspace, str.isupper,
                      lambda x: all(32 <= ord(c) <= 126 for c in x),
                      lambda x: x in '0123456789abcdefABCDEF']
-                p = m[ord(t) - 0x87]
+                p = m[ord(t) - 0x88]
                 x = to_ps(self.stack.pop())
                 self.stack.append(1 if p(x) else 0)
             elif t == '\x90': #= dump
