@@ -137,8 +137,33 @@ The following single-byte tokens push constants to the stack:
 <dd>Modulo numbers, each nth element for list+number, splits two lists removing empty lists, maps block over list.</dd>
 <dt>$35 (and, get, when, filter, &amp;)</dt>
 <dd>Bitwise ands numbers, indexes for list+number, evals number+block only when underlying number is nonzero, filters for list+block.</dd>
-Et cetera, et cetera, et cetera. You know what, just read the mnemonics in gs2c.py and mess around with them. If you need to know anything ask me via <a href="mailto:0nooodl@gmail.com">mail</a> or IRC (I'm mauris in #anagol on freenode.)
+Et cetera, et cetera, et cetera. You know what, just read the mnemonics in gs2.py and mess around with them. If you need to know anything ask me via <a href="mailto:0nooodl@gmail.com">mail</a> or IRC (I'm mauris in #anagol on freenode.)
 </dl>
 
+<h2>Example usage and gs2c</h2>
+<p>The included gs2c.py script is an "assembler" that compiles a more readable representation of gs2 opcodes and constants. It reads mnemonics for gs2 functions from the source code of gs2.py itself! Let's write a simple program, compile it using gs2c.py, and run it.</p>
+
+<p>A very simple golf challenge is the following: given a positive integer n on standard input, print a triangle of asterisks of size n:</p>
+<pre>*
+**
+***
+****
+*****</pre>
+<p>We read the number, then map a block over [1..n], turning each number into asterisks followed by a newline:</p>
+
+<pre>read-num range1 m: "*" times new-line</pre>
+
+<p>Then gs2c can compile this, and gs2 can run the resulting file:</p>
+
+<pre>$ python gs2c.py &lt; stars &gt; compiled &amp;&amp; echo 7 | python gs2.py compiled
+*
+**
+***
+****
+*****
+******
+*******</pre>
+
+<p>Our solution is 7 bytes long: 56 2f fe 07 2a 32 0a. This is pretty good compared to GolfScript's 11.</p>
 </body>
 </html>
