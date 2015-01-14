@@ -1,4 +1,4 @@
-# gs2 interpreter (version 0.1)
+# gs2 interpreter (version 0.2)
 # (c) nooodl 2014
 
 import copy
