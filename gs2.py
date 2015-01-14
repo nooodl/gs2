@@ -486,6 +486,8 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(x * 2)
                 elif is_list(x):
+                    while x[-1] == ord('\n'):
+                        x.pop()
                     self.stack.append(split(x, to_gs('\n')))
                 else:
                     raise TypeError('double / line')
@@ -505,7 +507,7 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(x * x)
                 elif is_list(x):
-                    self.stack.append(split(x, to_gs(' ')))
+                    self.stack.append(map(to_gs, to_ps(x).split()))
                 else:
                     raise TypeError('square / words')
 
