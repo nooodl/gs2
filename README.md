@@ -46,9 +46,9 @@ $9f | regex split (like $9c, but calls re.split)
 
 The regexes used by these operations may be prefixed by special characters to set a special variable _c_: by default it is 0, prefixing the regex by $5D sets it to 1, prefixing it by $7D $xx sets it to xx. _c_ affects the operations as follows:
 
-*   $9c: match whole string if _c_ &gt; 0
+*   $9c: match whole string if _c_ > 0
 *   $9d: perform at most _c_ substitutions (unlimited if _c_ = 0)
-*   $9e: find first matching substring only if _c_ &gt; 0 (else array of matching substrings)
+*   $9e: find first matching substring only if _c_ > 0 (else array of matching substrings)
 *   $9f: perform at most _c_ splits (unlimited if _c_ = 0)
 Furthermore, if the first character of a program is $04, it may be omitted; an unmatched string closing token will automatically be paired up.
 
@@ -126,7 +126,7 @@ We read the number, then map a block over [1..n], turning each number into aster
 
 Then gs2c can compile this, and gs2 can run the resulting file:
 
-    $ python gs2c.py &lt; stars &gt; compiled &amp;&amp; echo 7 | python gs2.py compiled
+    $ python gs2c.py < stars > compiled && echo 7 | python gs2.py compiled
     *
     **
     ***
