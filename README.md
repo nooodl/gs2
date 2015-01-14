@@ -18,27 +18,11 @@ are compatible with the included gs2c utility.
 Special tokens are:
 
 Token | Meaning
-- | -
+----- | -------
 $01 $xx | Push unsigned byte $xx to stack.
 $02 $yy $xx | Push signed short $xxyy to stack.
 $03 $zz $yy $xx $ww | Push signed short $wwxxyyzz to stack.
-$04 _ss_ $zz | Push string(s) to stack. _ss_ is separated by $07; the action performed is decided by the string end byte $zz, which is one of:
-
-*   $05: push strings to stack, sequentially
-*   $06: push strings to stack in array
-*   $9b: sprintf (pops format from _ss_, pops fitting number of items from stack, pushes formatted string)
-*   $9c: regex match (pops regex from _ss_, pops string from stack, pushes 1 on match, else 0)
-*   $9d: regex replace (pops replacement string from _ss_, pops regex from _ss_, pops string from stack and pushes re.sub result)
-*   $9e: regex find (like $9c, but calls re.findall)
-*   $9f: regex split (like $9c, but calls re.split)
-The regexes used by these operations may be prefixed by special characters to set a special variable _c_: by default it is 0, prefixing the regex by $5D sets it to 1, prefixing it by $7D $xx sets it to xx. _c_ affects the operations as follows:
-
-*   $9c: match whole string if _c_ &gt; 0
-*   $9d: perform at most _c_ substitutions (unlimited if _c_ = 0)
-*   $9e: find first matching substring only if _c_ &gt; 0 (else array of matching substrings)
-*   $9f: perform at most _c_ splits (unlimited if _c_ = 0)
-Furthermore, if the first character of a program is $04, it may be omitted; an unmatched string closing token will automatically be paired up.
-
+$04 _ss_ $zz | Push string(s) to stack. _ss_ is separated by $07; the action performed is decided by the string end byte $zz, see below.
 $07 $cc | Push single-character string "$cc" to stack.
 $08 | Opens a block.
 $09 | Closes a block.
@@ -48,9 +32,30 @@ $xx $fd (df1, dump-filter1) | Filter single token inside lists. Short for $08 $9
 $fe (m:) | Open rest-of-program map block.
 $ff (f:) | Open rest-of-program filter block.
 
+The end bytes for $04 mean the following:
+
+End byte | Meaning
+-------- | -------
+$05 | push strings to stack, sequentially
+$06 | push strings to stack in array
+$9b | sprintf (pops format from _ss_, pops fitting number of items from stack, pushes formatted string)
+$9c | regex match (pops regex from _ss_, pops string from stack, pushes 1 on match, else 0)
+$9d | regex replace (pops replacement string from _ss_, pops regex from _ss_, pops string from stack and pushes re.sub result)
+$9e | regex find (like $9c, but calls re.findall)
+$9f | regex split (like $9c, but calls re.split)
+
+The regexes used by these operations may be prefixed by special characters to set a special variable _c_: by default it is 0, prefixing the regex by $5D sets it to 1, prefixing it by $7D $xx sets it to xx. _c_ affects the operations as follows:
+
+*   $9c: match whole string if _c_ &gt; 0
+*   $9d: perform at most _c_ substitutions (unlimited if _c_ = 0)
+*   $9e: find first matching substring only if _c_ &gt; 0 (else array of matching substrings)
+*   $9f: perform at most _c_ splits (unlimited if _c_ = 0)
+Furthermore, if the first character of a program is $04, it may be omitted; an unmatched string closing token will automatically be paired up.
+
 The following single-byte tokens have special meaning at the start of a program:
+
 Mode | Meaning
-- | -
+---- | -------
 $30 (line-mode) | Line mode: [program] &rarr; [lines, map program, unlines]
 $31 (word-mode) | Word mode: [program] &rarr; [words, map program, unwords]
 $32 (line-mode-skip-first) | Like $30, but ignore first line.
@@ -60,8 +65,9 @@ All other tokens are simple operations that pop values from the stack and push r
 ## Constants
 
 The following single-byte tokens push constants to the stack:
+
 Byte | Constant
-- | -
+---- | --------
 $0a (new-line) | [$0a]
 $0b (empty-list) | []
 $0c (empty-block) | {}
@@ -76,7 +82,7 @@ $1f | 256
 ## Functions
 
 Opcode | Meaning
-- | -
+------ | -------
 $0e (make-array) | Pop n, then pop n elements and push them back in an array.
 $20 (negate, reverse, eval) | Negates numbers, reverses lists, evaluates blocks.
 $21 (bnot, head) | Bitwise-negates numbers, extracts first element from lists.
