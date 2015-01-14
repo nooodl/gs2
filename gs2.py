@@ -486,7 +486,7 @@ class GS2(object):
                 if is_num(x):
                     self.stack.append(x * 2)
                 elif is_list(x):
-                    while x[-1] == ord('\n'):
+                    while x and x[-1] == ord('\n'):
                         x.pop()
                     self.stack.append(split(x, to_gs('\n')))
                 else:
