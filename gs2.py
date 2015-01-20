@@ -94,7 +94,7 @@ def sieve(limit):
     prime_list = []
     for i in range(2, limit):
         if i in composite: continue
-        for j in range(i*2, limit, i):
+        for j in range(i*i, limit, i):
             composite.add(j)
         prime_list.append(i)
     sieved = limit
