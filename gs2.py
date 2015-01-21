@@ -941,7 +941,7 @@ class GS2(object):
                     self.stack.append(res[::-1])
                 elif is_list(x):
                     res = 0
-                    for i in x[::-1]:
+                    for i in x:
                         res = res * b + i
                     self.stack.append(res)
                 else:
