@@ -287,7 +287,7 @@ class GS2(object):
         self.stdin = to_gs(stdin)
         self.stack = Stack([self.stdin])
         self.regs = {
-            0: stdin,                # A
+            0: to_gs(stdin),         # A
             1: len(stdin),           # B
             2: to_gs(code),          # C
             3: random.randint(0, 2), # D
