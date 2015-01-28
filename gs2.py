@@ -42,7 +42,7 @@ def split(a, b, clean=False):
     lb = len(b)
 
     i = 0
-    while i <= len(a) - lb:
+    while i < len(a) - lb:
         if a[i:i + lb] == b:
             res.append([])
             i += lb
