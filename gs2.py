@@ -819,6 +819,11 @@ class GS2(object):
                 x = self.stack.pop()
                 if x > y: x, y = y, x
                 self.stack.append(range(x, y))
+            elif t == '\x50': #= pop
+                self.stack.pop()
+            elif t == '\x51': #= pop2
+                self.stack.pop()
+                self.stack.pop()
             elif t == '\x52': #= show
                 x = self.stack.pop()
                 self.stack.append(to_gs(show(x)))
