@@ -336,30 +336,31 @@ class GS2(object):
                     del self.stack[-n:]
                     self.stack.append(to_gs(f % x))
                 elif t[-1] == '\x9c': # regex match
-                    pattern = strings.pop()
+                    pattern = to_ps(strings.pop())
                     c, pattern = regex_count(pattern)
                     s = to_ps(self.stack.pop())
                     f = re.match if c else re.search
                     self.stack.append(1 if f(pattern, s) else 0)
                 elif t[-1] == '\x9d': # regex sub
-                    repl = strings.pop()
-                    pattern = strings.pop()
+                    repl = to_ps(strings.pop())
+                    pattern = to_ps(strings.pop())
                     c, pattern = regex_count(pattern)
                     s = to_ps(self.stack.pop())
                     m = re.sub(pattern, repl, s, count=c)
                     self.stack.append(to_gs(m))
                 elif t[-1] == '\x9e': # regex find
-                    pattern = strings.pop()
+                    pattern = to_ps(strings.pop())
                     c, pattern = regex_count(pattern)
                     s = to_ps(self.stack.pop())
                     ms = re.findall(pattern, s)
                     if c > 0: ms = ms[0] if ms else []
                     self.stack.append(map(to_gs, ms))
                 elif t[-1] == '\x9f': # regex split
-                    pattern = strings.pop()
+                    pattern = to_ps(strings.pop())
                     c, pattern = regex_count(pattern)
                     s = to_ps(self.stack.pop())
                     m = re.split(pattern, s, maxsplit=c)
+                    self.stack.append(map(to_gs, m))
                 
             elif t[0] == '\x07': # single char string
                 self.stack.append([ord(t[1])])
