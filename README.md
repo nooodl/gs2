@@ -83,7 +83,7 @@ Byte | Constant
 
 Opcode | Meaning
 ------ | -------
-`$0e` (`make-array`) | Pop _n_, then pop _n_ elements and push them back into an array.
+`$0e` (`make-array, extract-array`) | Pop number _n_, then pop _n_ elements and push them back into an array; pop array and push each element.
 `$20` (`negate, reverse, eval`) | Negate numbers; reverse lists; evaluate blocks.
 `$21` (`bnot, head`) | Bitwise-negates numbers; extract first element from lists.
 `$22` (`not, tail`) | Boolean negation for numbers; drop first element from lists.
