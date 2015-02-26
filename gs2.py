@@ -374,9 +374,16 @@ class GS2(object):
                 self.stack.append(Block([]))
             elif t == '\x0d': #= space
                 self.stack.append([ord(' ')])
-            elif t == '\x0e': #= make-array
-                size = self.stack.pop()
-                self.stack[-size:] = [self.stack[-size:]]
+            elif t == '\x0e': #= make-array extract-array
+                x = self.stack.pop()
+                if is_num(x):
+                    self.stack[-x:] = [self.stack[-x:]]
+                elif is_list(x):
+                    for i in x:
+                        self.stack.append(i)
+                else:
+                    raise TypeError('make-array / extract-array')
+
             elif t == '\x0f': #= exit
                 break
 
