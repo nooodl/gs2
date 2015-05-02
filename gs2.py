@@ -171,10 +171,10 @@ def tokenize(prog):
         prog = prog[1:]
     
     token_re = [
+        '\x04[^%s]*[%s]' % (cs, cs), # string (array)
         '\x01.',                     # unsigned byte
         '\x02..',                    # signed short
         '\x03....',                  # signed long
-        '\x04[^%s]*[%s]' % (cs, cs), # string (array)
         '\x07.',                     # 1 char string
         '.',                         # regular token
     ]
