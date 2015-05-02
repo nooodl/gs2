@@ -374,7 +374,7 @@ class GS2(object):
                 self.stack.append(Block([]))
             elif t == '\x0d': #= space
                 self.stack.append([ord(' ')])
-            elif t == '\x0e': #= make-array extract-array
+            elif t == '\x0e': #= make-array extract-array dump
                 x = self.stack.pop()
                 if is_num(x):
                     self.stack[-x:] = [self.stack[-x:]]
@@ -1093,9 +1093,13 @@ class GS2(object):
                 p = m[ord(t) - 0x88]
                 x = to_ps(self.stack.pop())
                 self.stack.append(1 if p(x) else 0)
-            elif t == '\x90': #= dump
-                for i in self.stack.pop():
-                    self.stack.append(i)
+            elif t == '\x90': #= uniq nub
+                xs = self.stack.pop()
+                uniq = []
+                for x in xs:
+                    if x not in uniq:
+                        uniq.append(x)
+                self.stack.append(uniq)
             elif t == '\x91': #= compress
                 ns = self.stack.pop()
                 xs = self.stack.pop()
