@@ -1159,13 +1159,13 @@ class GS2(object):
             elif '\xa0' <= t <= '\xaf': # junk (recently popped items)
                 self.stack.append(self.stack.junk[-1 - (ord(t) & 15)])
             elif t == '\xb0': #= zip
-                xs = self.stack.pop()
                 ys = self.stack.pop()
+                xs = self.stack.pop()
                 self.stack.append(map(list, zip(xs, ys)))
             elif t == '\xb1': #= zipwith
                 f = self.stack.pop()
-                xs = self.stack.pop()
                 ys = self.stack.pop()
+                xs = self.stack.pop()
                 l0 = len(self.stack)
                 for x, y in zip(xs, ys):
                     self.stack.append(x)
