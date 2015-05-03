@@ -216,7 +216,7 @@ def tokenize(prog):
             # useful with transpose, pairwise, cartesian-product, etc.
             f = {'\xf6': '\x34', '\xf7': '\x35'}[t]
             x = blocks[-1].code.pop()
-            blocks[-1].code.extend([Block(['\x90', x]), f])
+            blocks[-1].code.extend([Block(['\x0e', x]), f])
         elif t == '\xfe': #= m:
             blocks.append(Block([]))
             final.append('\x34')
