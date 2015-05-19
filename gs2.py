@@ -145,7 +145,7 @@ def factor(n, exps=False):
             res = [[k, len(list(g))] for k, g in it.groupby(res)]
         return res
     elif is_list(n):
-        if is_num(n[0]):
+        if n and is_num(n[0]):
             n = zip(n[0::2], n[1::2])
         p = 1
         for b, e in n: p *= b ** e
