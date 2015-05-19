@@ -142,11 +142,11 @@ def factor(n, exps=False):
                 n //= p
             p = next_prime(p)
         if exps:
-            res = [[k, len(g)] for k, g in it.groupby(res)]
+            res = [[k, len(list(g))] for k, g in it.groupby(res)]
         return res
     elif is_list(n):
         if is_num(n[0]):
-            n = group(n, 2)
+            n = zip(n[0::2], n[1::2])
         p = 1
         for b, e in n: p *= b ** e
         return p
