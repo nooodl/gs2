@@ -1190,7 +1190,7 @@ class GS2(object):
             elif '\xd8' <= t <= '\xdb': # tuck
                 self.stack.insert(-1, self.regs[ord(t) & 3])
             elif '\xdc' <= t <= '\xdf': # show
-                self.stack.append(show(self.regs[ord(t) & 3]))
+                self.stack.append(to_gs(show(self.regs[ord(t) & 3])))
             else:
                 raise ValueError('invalid token %r' % t) 
 
