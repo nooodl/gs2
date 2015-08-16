@@ -57,7 +57,7 @@ def join(a, b):
     for i, x in enumerate(a):
         if i > 0:
             res.extend(b)
-        res.extend(x)
+        res.extend(x if is_list(x) else [x])
     return res
 
 def set_diff(a, b):
