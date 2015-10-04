@@ -24,7 +24,8 @@ with open('gs2.py') as f:
 mnemonics["'"] = '\xe0'  # block1
 
 for i in xrange(16):
-    mnemonics['@%d' % i] = chr(0xA0 | i)
+    mnemonics['@%d' % i]    = chr(0xA0 | i)
+    mnemonics['junk%d' % i] = chr(0xA0 | i)
 for i, c in enumerate('abcd'):
     mnemonics['save-%s' % c] = chr(0xC8 | i)
     mnemonics['pop-%s' % c]  = chr(0xCC | i)
