@@ -1,7 +1,10 @@
-# gs2 interpreter (version 0.2)
-# (c) nooodl 2014
+"""
+gs2 interpreter (version 0.2)
+(c) nooodl 2014
+"""
 
 import copy
+import doctest
 import inspect
 import itertools as it
 import math
@@ -28,16 +31,28 @@ def log(x):
     sys.stderr.write('\x1b[36m%s:%d\x1b[34m: %r\x1b[0m\n' % (name, line, x))
 
 def lcm(a, b):
+    """
+    >>> lcm(6, 9)
+    18
+    """
     if (a, b) == (0, 0): return 0
     return abs(a * b) // gcd(a, b)
 
 def product(xs):
+    """
+    >>> product([1, 2, 3])
+    6
+    """
     p = 1
     for x in xs:
         p *= x
     return p
 
 def split(a, b, clean=False):
+    """
+    >>> [''.join(i) for i in split("this is an example", " ",)]
+    ['this', 'is', 'an', 'example']
+    """
     res = [[]]
     lb = len(b)
 
@@ -53,6 +68,10 @@ def split(a, b, clean=False):
     return filter(None, res) if clean else res
 
 def join(a, b):
+    """
+    >>> join(['this', 'is', 'an', 'example'], ' ')
+    ['this', ' ', 'is', ' ', 'an', ' ', 'example']
+    """
     res = []
     for i, x in enumerate(a):
         if i > 0:
@@ -61,6 +80,10 @@ def join(a, b):
     return res
 
 def set_diff(a, b):
+    """
+    >>> set_diff([1, 3, 5, 6], [3, 5, 7])
+    [1, 6]
+    """
     res = []
     for i in a:
         if i not in b:
@@ -68,6 +91,10 @@ def set_diff(a, b):
     return res
 
 def set_and(a, b):
+    """
+    >>> set_and([1, 3, 5, 6], [3, 5, 7])
+    [3, 5]
+    """
     res = []
     for i in a:
         if i in b:
@@ -75,9 +102,17 @@ def set_and(a, b):
     return res
 
 def set_or(a, b):
+    """
+    >>> set_or([1, 3, 5, 6], [3, 5, 7])
+    [1, 3, 5, 6, 7]
+    """
     return a + set_diff(b, a)
 
 def set_xor(a, b):
+    """
+    >>> set_xor([1, 3, 5, 6], [3, 5, 7])
+    [1, 6, 7]
+    """
     return set_diff(a, b) + set_diff(b, a)
 
 # prime number functions
@@ -127,12 +162,22 @@ def next_prime(n):
     return n
 
 def totient(n):
+    """
+    >>> totient(1000)
+    400
+    """
     count = 0
     for i in xrange(1, n+1):
         if gcd(n, i) == 1: count += 1
     return count
     
 def factor(n, exps=False):
+    """
+    >>> factor(120)
+    [2, 2, 2, 3, 5]
+    >>> factor(120, exps=True)
+    [[2, 3], [3, 1], [5, 1]]
+    """
     if is_num(n):
         p = 2
         res = []
@@ -154,7 +199,10 @@ def factor(n, exps=False):
         raise TypeError('factor')
 
 def chunks(x, y):
-    # chunks(range(12), 3) ==> [[0, 1, 2], [3, 4, 5], ...]
+    """
+    >>> list(chunks(range(12), 3))
+    [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]]
+    """
     while x:
         yield x[:y]
         x = x[y:]
@@ -1211,6 +1259,7 @@ class GS2(object):
         self.stack[l0:] = [self.stack[l0:]]
 
 if __name__ == '__main__':
+    ## doctest.testmod() ## <- Uncomment to run tests.
     if len(sys.argv) <= 1:
         print >> sys.stderr, 'usage: python %s [-d] <code file>' % sys.argv[0]
         sys.exit(1)
