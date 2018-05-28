@@ -6,6 +6,8 @@ GS2 is a stack-based, concatenative programming language with functional influen
 
 Programming in GS2 is conceptually similar to programming in GolfScript or similar languages: the stack initially contains a string representing standard input, and its contents are printed to standard output when the program is finished.
 
+_The original author (@nooodl/@maurisvh) is no longer maintaining this language._
+
 ## Values
 
 GS2 values are integers, blocks, or lists. Blocks contain unevaluated code, representing "functions", like in GolfScript. There is no dedicated string type: strings are just lists of integers.
@@ -106,7 +108,7 @@ Opcode | Meaning
 `$33` (`div, chunks, split, each, /`) | Divide numbers; splits a list in chunks of size _n_; split two lists; call block with each element of list.
 `$34` (`mod, step, clean-split, map, %`) | Modulo numbers; each nth element for list+number; split two lists removing empty lists; maps block over list.
 `$35` (`and, get, when, filter, &`) | Bitwise and numbers; index list; eval block only when number on top of stack is non-zero, filter list by block.
-Et cetera, et cetera, et cetera. You know what, just read the mnemonics in gs2.py and mess around with them. If you need to know anything ask me via [mail](mailto:0nooodl@gmail.com) or IRC (I'm mauris in #anagol on freenode.)
+Et cetera. You can see the full list of mnemonics in `gs2.py` and play around with them to get a feel for what they do.
 
 ## Example usage and gs2c
 
